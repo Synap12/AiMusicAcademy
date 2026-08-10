@@ -7,10 +7,11 @@ import {
   playHistoryTable,
   withdrawalRequestsTable,
   coverArtsTable,
+  coverArtGenerationsTable,
 } from "@workspace/db";
 import { and, eq, desc, gte, sql, count, countDistinct, inArray } from "drizzle-orm";
 import { requireArtist } from "../middlewares/auth";
-import { PLAY_RATE } from "../lib/plans";
+import { PLAY_RATE, coverArtGenerationsFor } from "../lib/plans";
 import { generateCoverArt, isOpenAiConfigured } from "../lib/coverart";
 
 const router: IRouter = Router();
@@ -201,14 +202,42 @@ router.post("/artist/withdrawals", requireArtist, async (req, res, next) => {
 
 // ---- AI cover art ----
 
+/** Start of the current calendar month (UTC) — quotas reset on the 1st. */
+function startOfMonth(): Date {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+}
+
+/** Generations used this month. Counted from the permanent generation log
+ *  (not the gallery), so deleting a cover never refunds quota. */
+async function generationsUsed(artistId: number): Promise<number> {
+  const [row] = await db
+    .select({ n: count() })
+    .from(coverArtGenerationsTable)
+    .where(
+      and(
+        eq(coverArtGenerationsTable.artistId, artistId),
+        gte(coverArtGenerationsTable.createdAt, startOfMonth()),
+      ),
+    );
+  return row?.n ?? 0;
+}
+
 router.get("/artist/cover-art", requireArtist, async (req, res, next) => {
   try {
-    const gallery = await db
-      .select()
-      .from(coverArtsTable)
-      .where(eq(coverArtsTable.artistId, req.user!.id))
-      .orderBy(desc(coverArtsTable.createdAt));
-    res.json({ gallery, openaiConfigured: isOpenAiConfigured() });
+    const [gallery, used] = await Promise.all([
+      db
+        .select()
+        .from(coverArtsTable)
+        .where(eq(coverArtsTable.artistId, req.user!.id))
+        .orderBy(desc(coverArtsTable.createdAt)),
+      generationsUsed(req.user!.id),
+    ]);
+    res.json({
+      gallery,
+      openaiConfigured: isOpenAiConfigured(),
+      usage: { used, limit: coverArtGenerationsFor(req.user!.subscriptionPlan) },
+    });
   } catch (err) {
     next(err);
   }
@@ -225,10 +254,21 @@ router.post("/artist/cover-art", requireArtist, async (req, res, next) => {
       res.status(400).json({ error: "Describe the cover you want (3+ characters)" });
       return;
     }
+    const limit = coverArtGenerationsFor(req.user!.subscriptionPlan);
+    const used = await generationsUsed(req.user!.id);
+    if (used >= limit) {
+      res.status(403).json({
+        error: `You've used all ${limit} AI cover generations for this month. Your quota resets on the 1st.`,
+      });
+      return;
+    }
     const { url, generator } = await generateCoverArt(
       parsed.data.prompt,
       parsed.data.style,
     );
+    await db
+      .insert(coverArtGenerationsTable)
+      .values({ artistId: req.user!.id });
     const [art] = await db
       .insert(coverArtsTable)
       .values({

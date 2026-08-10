@@ -100,6 +100,21 @@ export const coverArtsTable = pgTable(
   (t) => [index("cover_arts_artist_idx").on(t.artistId)],
 );
 
+// Permanent log of AI cover generations, used for monthly quota accounting.
+// Rows are never deleted, so removing a cover from the gallery does not
+// refund the artist's quota.
+export const coverArtGenerationsTable = pgTable(
+  "cover_art_generations",
+  {
+    id: serial("id").primaryKey(),
+    artistId: integer("artist_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("cover_art_generations_artist_idx").on(t.artistId, t.createdAt)],
+);
+
 export const insertTrackSchema = createInsertSchema(tracksTable).omit({
   id: true,
   createdAt: true,
@@ -111,3 +126,4 @@ export type PlayHistory = typeof playHistoryTable.$inferSelect;
 export type LikedTrack = typeof likedTracksTable.$inferSelect;
 export type Following = typeof followingsTable.$inferSelect;
 export type CoverArt = typeof coverArtsTable.$inferSelect;
+export type CoverArtGeneration = typeof coverArtGenerationsTable.$inferSelect;

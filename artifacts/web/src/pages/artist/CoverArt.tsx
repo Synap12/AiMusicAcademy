@@ -69,6 +69,8 @@ export default function ArtistCoverArt() {
   });
 
   const gallery: Art[] = data?.gallery ?? [];
+  const usage: { used: number; limit: number } = data?.usage ?? { used: 0, limit: 0 };
+  const atLimit = data !== undefined && usage.used >= usage.limit;
 
   return (
     <div>
@@ -81,7 +83,20 @@ export default function ArtistCoverArt() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="card">
-          <h2 className="font-bold text-lg mb-4">Generator</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-lg">Generator</h2>
+            {data && (
+              <span className={clsx("text-sm font-semibold", atLimit ? "text-red" : "text-txt2")}>
+                {usage.used} / {usage.limit} this month
+              </span>
+            )}
+          </div>
+          {atLimit && (
+            <div className="mb-4 rounded-lg border border-red/40 bg-red/10 px-4 py-3 text-sm text-red">
+              You've used all {usage.limit} AI cover generations for this month. Your
+              quota resets on the 1st.
+            </div>
+          )}
           <label className="label">Describe your cover</label>
           <textarea
             className="textarea"
@@ -108,7 +123,7 @@ export default function ArtistCoverArt() {
           </div>
           <button
             className="btn btn-primary w-full mt-6"
-            disabled={prompt.trim().length < 3 || generate.isPending}
+            disabled={prompt.trim().length < 3 || generate.isPending || atLimit}
             onClick={() => generate.mutate()}
           >
             <Sparkles size={16} />

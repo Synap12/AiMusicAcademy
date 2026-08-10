@@ -10,6 +10,8 @@ export interface Plan {
   role: "LISTENER" | "ARTIST";
   price: number;
   merchSlots: number;
+  /** AI cover art generations allowed per calendar month (resets on the 1st, UTC). */
+  coverArtGenerations: number;
   features: string[];
 }
 
@@ -20,6 +22,7 @@ export const PLANS: Record<PlanId, Plan> = {
     role: "LISTENER",
     price: 6.99,
     merchSlots: 0,
+    coverArtGenerations: 0,
     features: [
       "Ad-free streaming",
       "Standard quality audio",
@@ -32,6 +35,7 @@ export const PLANS: Record<PlanId, Plan> = {
     role: "LISTENER",
     price: 14.99,
     merchSlots: 0,
+    coverArtGenerations: 0,
     features: [
       "HQ audio",
       "Offline downloads",
@@ -45,11 +49,12 @@ export const PLANS: Record<PlanId, Plan> = {
     role: "ARTIST",
     price: 49.99,
     merchSlots: 1,
+    coverArtGenerations: 5,
     features: [
       "Unlimited track uploads",
       "1 active merch slot",
       "Analytics",
-      "AI cover art generator",
+      "AI cover art generator (5/month)",
       "Community",
     ],
   },
@@ -59,13 +64,23 @@ export const PLANS: Record<PlanId, Plan> = {
     role: "ARTIST",
     price: 99.99,
     merchSlots: 3,
-    features: ["Everything in Artist Basic", "3 active merch slots"],
+    coverArtGenerations: 20,
+    features: [
+      "Everything in Artist Basic",
+      "3 active merch slots",
+      "AI cover art generator (20/month)",
+    ],
   },
 };
 
 export function merchSlotsFor(plan: string | null): number {
   if (!plan) return 0;
   return PLANS[plan as PlanId]?.merchSlots ?? 0;
+}
+
+export function coverArtGenerationsFor(plan: string | null): number {
+  if (!plan) return 0;
+  return PLANS[plan as PlanId]?.coverArtGenerations ?? 0;
 }
 
 /** Revenue credited to the artist per counted play, in USD. */
