@@ -8,11 +8,11 @@ import {
   likedTracksTable,
   followingsTable,
 } from "@workspace/db";
-import { and, eq, desc, asc, sql, inArray, count, sum } from "drizzle-orm";
+import { and, eq, desc, asc, sql, inArray, count, sum, gte } from "drizzle-orm";
 import { requireOnboarded, requireArtist } from "../middlewares/auth";
 import { miniUser } from "../lib/auth";
 import { audioUpload, uploadUrl } from "../lib/uploads";
-import { PLAY_RATE } from "../lib/plans";
+import { PLAY_RATE, DAILY_COUNTED_PLAYS } from "../lib/plans";
 
 const router: IRouter = Router();
 
@@ -209,8 +209,11 @@ router.delete("/tracks/:id", requireArtist, async (req, res, next) => {
 });
 
 /**
- * Record a play: play_history row, play_count increment, and artist earnings
- * credit (the blueprint's `play_increment_balances` backend workflow).
+ * Record a counted play (the blueprint's `play_increment_balances` workflow,
+ * with anti-abuse rules). The frontend calls this only after 50% of the track
+ * has been heard. Server-side, only the first DAILY_COUNTED_PLAYS plays per
+ * listener per UTC day register in play counts / earnings — later plays are
+ * silently ignored (streaming itself is never blocked). Self-plays never earn.
  */
 router.post("/tracks/:id/play", requireOnboarded, async (req, res, next) => {
   try {
@@ -224,6 +227,26 @@ router.post("/tracks/:id/play", requireOnboarded, async (req, res, next) => {
       res.status(404).json({ error: "Track not found" });
       return;
     }
+
+    // Daily cap: play_history only contains counted plays, so today's row
+    // count is the listener's used quota. Resets at midnight UTC.
+    const startOfDay = new Date();
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const [used] = await db
+      .select({ n: count() })
+      .from(playHistoryTable)
+      .where(
+        and(
+          eq(playHistoryTable.listenerId, req.user!.id),
+          gte(playHistoryTable.playedAt, startOfDay),
+        ),
+      );
+    if ((used?.n ?? 0) >= DAILY_COUNTED_PLAYS) {
+      // Silently uncounted — the listener keeps streaming normally.
+      res.json({ ok: true, counted: false, playCount: track.playCount });
+      return;
+    }
+
     await db.insert(playHistoryTable).values({
       listenerId: req.user!.id,
       trackId: id,
@@ -232,7 +255,7 @@ router.post("/tracks/:id/play", requireOnboarded, async (req, res, next) => {
       .update(tracksTable)
       .set({ playCount: sql`${tracksTable.playCount} + 1` })
       .where(eq(tracksTable.id, id));
-    // Self-plays don't earn revenue.
+    // Self-plays never earn revenue.
     if (track.artistId !== req.user!.id) {
       await db
         .update(usersTable)
@@ -242,7 +265,7 @@ router.post("/tracks/:id/play", requireOnboarded, async (req, res, next) => {
         })
         .where(eq(usersTable.id, track.artistId));
     }
-    res.json({ ok: true, playCount: track.playCount + 1 });
+    res.json({ ok: true, counted: true, playCount: track.playCount + 1 });
   } catch (err) {
     next(err);
   }

@@ -39,7 +39,8 @@ Two-sided music streaming + artist monetization platform: artists upload AI-gene
 - **Payments degrade gracefully**: with no Stripe env, checkout runs a built-in mock flow (same webhook-shaped state changes) so the whole product works pre-keys; real Stripe activates automatically via env vars. Same pattern for OpenAI cover art (local SVG generator fallback).
 - Stripe webhook (`/api/webhooks/stripe`) is mounted **before** `express.json()` for raw-body signature verification.
 - Sessions are DB-backed random tokens in an httpOnly cookie (no JWT); passwords use scrypt.
-- Play tracking (`POST /tracks/:id/play`) writes play history + increments play count + credits artist `stream_balance`/`total_earnings` at `PLAY_RATE`; self-plays excluded.
+- Play tracking (`POST /tracks/:id/play`) writes play history + increments play count + credits artist `stream_balance`/`total_earnings` at `PLAY_RATE`. Anti-abuse rules (constants in `api-server/src/lib/plans.ts`): frontend reports a play only after 50% heard; server counts only the first `DAILY_COUNTED_PLAYS` (10) per listener per UTC day — later plays return `counted:false` silently; self-plays never earn. `play_history` therefore contains only counted plays.
+- Regression suite: `scripts/smoke-test.sh` (83 checks) against a server on port 5000.
 - The API serves the built SPA in production (SPA fallback for non-`/api`, non-`/uploads` paths); Vite proxies in dev.
 
 ## Gotchas

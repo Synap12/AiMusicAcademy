@@ -68,5 +68,15 @@ export function merchSlotsFor(plan: string | null): number {
   return PLANS[plan as PlanId]?.merchSlots ?? 0;
 }
 
-/** Revenue credited to the artist per tracked play, in USD. */
+/** Revenue credited to the artist per counted play, in USD. */
 export const PLAY_RATE = 0.004;
+
+/**
+ * Anti-abuse play counting rules:
+ * - Only the first N plays per listener per day (UTC midnight reset) count
+ *   toward play counts and artist earnings. Streaming itself is never blocked;
+ *   uncounted plays are silently ignored by the ledger.
+ * - The frontend reports a play only after 50% of the track has been heard.
+ * - Self-plays never earn (enforced in the play route).
+ */
+export const DAILY_COUNTED_PLAYS = 10;

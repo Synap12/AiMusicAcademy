@@ -49,7 +49,8 @@ Built as a real full-stack web app (React + Express + PostgreSQL), replacing the
 
 - [x] Browse Music: search (tracks/artists/genres), genre filter tabs, responsive card grid
 - [x] Persistent bottom music player: play/pause, prev/next, seek bar, volume, like — **actually plays audio** (seeded tracks include generated demo audio)
-- [x] Play tracking → play count + artist earnings ledger ($0.004/play, self-plays excluded)
+- [x] Play tracking → play count + artist earnings ledger ($0.004/play)
+- [x] **Play-counting rules**: only the first 10 plays per listener per day count toward play counts/earnings (silent — streaming never blocked, resets midnight UTC); a play counts only after 50% of the track is heard; artists never earn from self-plays
 - [x] Like / unlike tracks
 - [x] My Library: stats (liked count, following count, listen time), Liked Songs tab, Following tab, empty states
 - [x] Follow / unfollow artists

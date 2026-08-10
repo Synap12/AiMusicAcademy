@@ -36,12 +36,31 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(0.9);
   const qc = useQueryClient();
+  // Play-counting: a play is reported once per track-load, and only after the
+  // listener has heard 50% of it. The server then applies the daily cap.
+  const currentIdRef = useRef<number | null>(null);
+  const reportedRef = useRef(false);
 
   useEffect(() => {
     const audio = new Audio();
     audio.volume = 0.9;
     audioRef.current = audio;
-    const onTime = () => setProgress(audio.currentTime);
+    const onTime = () => {
+      setProgress(audio.currentTime);
+      if (
+        !reportedRef.current &&
+        currentIdRef.current !== null &&
+        audio.duration > 0 &&
+        audio.currentTime >= audio.duration / 2
+      ) {
+        reportedRef.current = true;
+        apiSend("POST", `/tracks/${currentIdRef.current}/play`)
+          .then((res) => {
+            if (res.counted) qc.invalidateQueries({ queryKey: ["tracks"] });
+          })
+          .catch(() => {});
+      }
+    };
     const onMeta = () => setDuration(audio.duration || 0);
     const onEnd = () => setPlaying(false);
     audio.addEventListener("timeupdate", onTime);
@@ -53,24 +72,19 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       audio.removeEventListener("loadedmetadata", onMeta);
       audio.removeEventListener("ended", onEnd);
     };
-  }, []);
+  }, [qc]);
 
-  const playTrack = useCallback(
-    (track: Track, newQueue?: Track[]) => {
-      const audio = audioRef.current;
-      if (!audio) return;
-      setCurrent(track);
-      if (newQueue) setQueue(newQueue);
-      audio.src = track.audioFile;
-      audio.play().catch(() => {});
-      setPlaying(true);
-      // Record the play (updates play count + artist earnings ledger).
-      apiSend("POST", `/tracks/${track.id}/play`)
-        .then(() => qc.invalidateQueries({ queryKey: ["tracks"] }))
-        .catch(() => {});
-    },
-    [qc],
-  );
+  const playTrack = useCallback((track: Track, newQueue?: Track[]) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    setCurrent(track);
+    if (newQueue) setQueue(newQueue);
+    currentIdRef.current = track.id;
+    reportedRef.current = false;
+    audio.src = track.audioFile;
+    audio.play().catch(() => {});
+    setPlaying(true);
+  }, []);
 
   const toggle = useCallback(() => {
     const audio = audioRef.current;
