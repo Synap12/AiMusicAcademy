@@ -238,6 +238,37 @@ input[type="range"]::-moz-range-thumb {
   animation: toast-in 0.2s ease;
 }
 
+/* hero player card */
+@keyframes eq-bounce {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(0.3);
+  }
+}
+.eq-bar {
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(#00d4ff, #b537ff);
+  animation: eq-bounce 1s ease-in-out infinite alternate;
+}
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+.animate-float {
+  animation: floaty 4s ease-in-out infinite;
+}
+.animate-float-delayed {
+  animation: floaty 4s ease-in-out 2s infinite;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);

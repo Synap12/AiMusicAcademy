@@ -59,6 +59,98 @@ const TESTIMONIALS = [
   },
 ];
 
+function HeroPlayerCard() {
+  return (
+    <div className="relative isolate w-full max-w-[420px] mx-auto">
+      {/* floating stat card — top right */}
+      <div className="absolute -top-4 -right-5 z-10 bg-card border border-line rounded-[14px] py-3 px-4 flex items-center gap-2.5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] animate-float">
+        <div
+          className="w-9 h-9 rounded-[10px] flex items-center justify-center text-lg"
+          style={{ background: "rgba(0,255,136,0.1)" }}
+        >
+          📈
+        </div>
+        <div>
+          <p className="text-[13px] font-semibold leading-tight">+1,240 plays</p>
+          <p className="text-[11px] text-txt2">Today's streams</p>
+        </div>
+      </div>
+
+      {/* main player card */}
+      <div className="relative rounded-3xl border border-line p-7 shadow-[0_40px_80px_rgba(0,0,0,0.5)]" style={{ background: "#111111" }}>
+        <div className="absolute -inset-px rounded-[25px] gradient-bg opacity-25 -z-10" />
+
+        <p className="text-[11px] font-semibold tracking-[2px] text-txt2 uppercase mb-5">
+          ▶ Now Playing
+        </p>
+
+        {/* cover with equalizer */}
+        <div
+          className="w-full aspect-square rounded-2xl mb-5 flex items-center justify-center text-[80px] relative overflow-hidden"
+          style={{ background: "linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)" }}
+        >
+          🎵
+          <div
+            className="absolute inset-0"
+            style={{ background: "linear-gradient(135deg,rgba(0,212,255,0.1),rgba(181,55,255,0.1))" }}
+          />
+          <div className="absolute bottom-4 right-4 flex items-end gap-[3px] h-5">
+            {[8, 14, 10, 18, 6].map((h, i) => (
+              <div
+                key={i}
+                className="eq-bar"
+                style={{ height: h, animationDelay: `${i * 0.15}s` }}
+              />
+            ))}
+          </div>
+        </div>
+
+        <p className="text-xl font-bold mb-1">Neon Dreams</p>
+        <p className="text-sm text-txt2 mb-4">DJ Synthwave · Electronic</p>
+
+        {/* progress */}
+        <div className="h-1 rounded-sm overflow-hidden mb-2" style={{ background: "#222222" }}>
+          <div
+            className="h-full rounded-sm"
+            style={{ width: "45%", background: "linear-gradient(90deg,#00D4FF,#B537FF)" }}
+          />
+        </div>
+        <div className="flex justify-between text-[11px] text-txt2 mb-5">
+          <span>1:23</span>
+          <span>3:47</span>
+        </div>
+
+        {/* controls (decorative) */}
+        <div className="flex items-center justify-center gap-5" aria-hidden="true">
+          <span className="w-9 h-9 rounded-full flex items-center justify-center text-txt2 text-base">
+            ⏮
+          </span>
+          <span className="w-[52px] h-[52px] rounded-full gradient-bg flex items-center justify-center text-white text-xl shadow-[0_8px_24px_rgba(0,212,255,0.4)]">
+            ⏸
+          </span>
+          <span className="w-9 h-9 rounded-full flex items-center justify-center text-txt2 text-base">
+            ⏭
+          </span>
+        </div>
+      </div>
+
+      {/* floating release card — bottom left */}
+      <div className="absolute bottom-[60px] -left-5 z-10 bg-card border border-line rounded-[14px] py-3 px-4 flex items-center gap-2.5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] animate-float-delayed">
+        <div
+          className="w-9 h-9 rounded-full flex items-center justify-center text-lg"
+          style={{ background: "rgba(181,55,255,0.15)" }}
+        >
+          🎨
+        </div>
+        <div>
+          <p className="text-[13px] font-semibold leading-tight">New Release</p>
+          <p className="text-[11px] text-txt2">Cyber Flow — J Techno</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Landing() {
   const { user } = useAuth();
   const { data } = useQuery({
@@ -87,21 +179,26 @@ export default function Landing() {
       </header>
 
       {/* hero */}
-      <section className="text-center px-6 pt-16 pb-20 max-w-4xl mx-auto">
-        <h1 className="text-4xl md:text-6xl font-extrabold leading-tight">
-          Where <span className="gradient-text">AI music</span> finds its audience
-        </h1>
-        <p className="text-txt2 text-lg mt-6 max-w-2xl mx-auto">
-          Stream AI-generated tracks, follow the artists behind them, and if you
-          create — earn from every play and sell merch with zero commission.
-        </p>
-        <div className="flex items-center justify-center gap-4 mt-9">
-          <Link href="/signup" className="btn btn-primary !px-8 !py-4 text-lg">
-            Start Listening
-          </Link>
-          <Link href="/signup" className="btn btn-secondary !px-8 !py-4 text-lg">
-            I'm an Artist
-          </Link>
+      <section className="px-6 md:px-12 pt-16 pb-20 max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
+        <div className="text-center lg:text-left">
+          <h1 className="text-4xl md:text-6xl font-extrabold leading-tight">
+            Where <span className="gradient-text">AI music</span> finds its audience
+          </h1>
+          <p className="text-txt2 text-lg mt-6 max-w-2xl mx-auto lg:mx-0">
+            Stream AI-generated tracks, follow the artists behind them, and if you
+            create — earn from every play and sell merch with zero commission.
+          </p>
+          <div className="flex items-center justify-center lg:justify-start gap-4 mt-9 flex-wrap">
+            <Link href="/signup" className="btn btn-primary !px-8 !py-4 text-lg">
+              Start Listening
+            </Link>
+            <Link href="/signup" className="btn btn-secondary !px-8 !py-4 text-lg">
+              I'm an Artist
+            </Link>
+          </div>
+        </div>
+        <div className="hidden sm:block pt-6 lg:pt-0">
+          <HeroPlayerCard />
         </div>
       </section>
 
