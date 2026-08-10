@@ -10,7 +10,7 @@ export function PlayerBar() {
     usePlayer();
   if (!current) return null;
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-line px-4 py-2.5">
+    <div className="fixed bottom-0 left-0 lg:left-60 right-0 z-40 bg-card border-t border-line px-4 py-2.5">
       <div className="flex items-center gap-4 max-w-[1400px] mx-auto">
         <div className="flex items-center gap-3 w-56 min-w-0">
           <Cover src={current.coverArt} name={current.trackName} size={48} />

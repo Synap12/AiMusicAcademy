@@ -102,7 +102,7 @@ function Shell({
       </div>
       {/* sidebar */}
       <aside
-        className={`fixed lg:sticky top-0 z-30 h-screen w-60 bg-card border-r border-line flex-col px-3 pb-4 transition-transform lg:translate-x-0 lg:flex ${
+        className={`fixed lg:sticky top-0 z-[45] lg:z-30 h-screen w-60 bg-card border-r border-line flex-col px-3 pb-4 transition-transform lg:translate-x-0 lg:flex ${
           open ? "translate-x-0 flex pt-14 lg:pt-0" : "-translate-x-full hidden lg:flex"
         }`}
       >
