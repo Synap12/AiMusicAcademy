@@ -61,9 +61,9 @@ const TESTIMONIALS = [
 
 function HeroPlayerCard() {
   return (
-    <div className="relative isolate w-full max-w-[420px] mx-auto">
+    <div className="relative isolate w-full max-w-[320px] mx-auto">
       {/* floating stat card — top right */}
-      <div className="absolute -top-4 -right-5 z-10 bg-card border border-line rounded-[14px] py-3 px-4 flex items-center gap-2.5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] animate-float">
+      <div className="absolute -top-3 -right-3 z-10 bg-card border border-line rounded-[14px] py-2.5 px-3.5 flex items-center gap-2.5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] animate-float">
         <div
           className="w-9 h-9 rounded-[10px] flex items-center justify-center text-lg"
           style={{ background: "rgba(0,255,136,0.1)" }}
@@ -77,16 +77,16 @@ function HeroPlayerCard() {
       </div>
 
       {/* main player card */}
-      <div className="relative rounded-3xl border border-line p-7 shadow-[0_40px_80px_rgba(0,0,0,0.5)]" style={{ background: "#111111" }}>
+      <div className="relative rounded-3xl border border-line p-5 shadow-[0_40px_80px_rgba(0,0,0,0.5)]" style={{ background: "#111111" }}>
         <div className="absolute -inset-px rounded-[25px] gradient-bg opacity-25 -z-10" />
 
-        <p className="text-[11px] font-semibold tracking-[2px] text-txt2 uppercase mb-5">
+        <p className="text-[11px] font-semibold tracking-[2px] text-txt2 uppercase mb-4">
           ▶ Now Playing
         </p>
 
         {/* cover with equalizer */}
         <div
-          className="w-full aspect-square rounded-2xl mb-5 flex items-center justify-center text-[80px] relative overflow-hidden"
+          className="w-full aspect-square rounded-2xl mb-4 flex items-center justify-center text-[56px] relative overflow-hidden"
           style={{ background: "linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)" }}
         >
           🎵
@@ -105,8 +105,8 @@ function HeroPlayerCard() {
           </div>
         </div>
 
-        <p className="text-xl font-bold mb-1">Neon Dreams</p>
-        <p className="text-sm text-txt2 mb-4">DJ Synthwave · Electronic</p>
+        <p className="text-lg font-bold mb-0.5">Neon Dreams</p>
+        <p className="text-[13px] text-txt2 mb-3">DJ Synthwave · Electronic</p>
 
         {/* progress */}
         <div className="h-1 rounded-sm overflow-hidden mb-2" style={{ background: "#222222" }}>
@@ -115,17 +115,17 @@ function HeroPlayerCard() {
             style={{ width: "45%", background: "linear-gradient(90deg,#00D4FF,#B537FF)" }}
           />
         </div>
-        <div className="flex justify-between text-[11px] text-txt2 mb-5">
+        <div className="flex justify-between text-[11px] text-txt2 mb-4">
           <span>1:23</span>
           <span>3:47</span>
         </div>
 
         {/* controls (decorative) */}
-        <div className="flex items-center justify-center gap-5" aria-hidden="true">
+        <div className="flex items-center justify-center gap-4" aria-hidden="true">
           <span className="w-9 h-9 rounded-full flex items-center justify-center text-txt2 text-base">
             ⏮
           </span>
-          <span className="w-[52px] h-[52px] rounded-full gradient-bg flex items-center justify-center text-white text-xl shadow-[0_8px_24px_rgba(0,212,255,0.4)]">
+          <span className="w-11 h-11 rounded-full gradient-bg flex items-center justify-center text-white text-lg shadow-[0_8px_24px_rgba(0,212,255,0.4)]">
             ⏸
           </span>
           <span className="w-9 h-9 rounded-full flex items-center justify-center text-txt2 text-base">
@@ -135,7 +135,7 @@ function HeroPlayerCard() {
       </div>
 
       {/* floating release card — bottom left */}
-      <div className="absolute bottom-[60px] -left-5 z-10 bg-card border border-line rounded-[14px] py-3 px-4 flex items-center gap-2.5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] animate-float-delayed">
+      <div className="absolute bottom-[52px] -left-3 z-10 bg-card border border-line rounded-[14px] py-2.5 px-3.5 flex items-center gap-2.5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] animate-float-delayed">
         <div
           className="w-9 h-9 rounded-full flex items-center justify-center text-lg"
           style={{ background: "rgba(181,55,255,0.15)" }}
@@ -162,19 +162,26 @@ export default function Landing() {
 
   return (
     <div className="min-h-full">
-      {/* nav */}
-      <header className="flex items-center justify-between px-6 md:px-12 py-5 max-w-6xl mx-auto">
-        <div className="flex items-center gap-2">
-          <span className="gradient-bg rounded-lg w-9 h-9 flex items-center justify-center text-white font-bold text-lg">
-            ♪
-          </span>
-          <span className="font-extrabold text-lg tracking-wide">
-            AI <span className="gradient-text">MUSIC ACADEMY</span>
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/login" className="btn btn-ghost btn-sm">Log In</Link>
-          <Link href="/signup" className="btn btn-primary btn-sm">Sign Up</Link>
+      {/* top navigation bar */}
+      <header className="sticky top-0 z-40 border-b border-line backdrop-blur-md" style={{ background: "rgba(10,10,10,0.85)" }}>
+        <div className="flex items-center justify-between px-6 md:px-12 py-4 max-w-6xl mx-auto">
+          <a href="#top" className="flex items-center gap-2">
+            <span className="gradient-bg rounded-lg w-9 h-9 flex items-center justify-center text-white font-bold text-lg">
+              ♪
+            </span>
+            <span className="font-extrabold text-lg tracking-wide">
+              AI <span className="gradient-text">MUSIC ACADEMY</span>
+            </span>
+          </a>
+          <nav className="hidden md:flex items-center gap-7 text-sm font-semibold text-txt2">
+            <a href="#features" className="hover:text-txt transition-colors">Features</a>
+            <a href="#pricing" className="hover:text-txt transition-colors">Pricing</a>
+            <a href="#testimonials" className="hover:text-txt transition-colors">Testimonials</a>
+          </nav>
+          <div className="flex items-center gap-3">
+            <Link href="/login" className="btn btn-ghost btn-sm">Log In</Link>
+            <Link href="/signup" className="btn btn-primary btn-sm">Sign Up</Link>
+          </div>
         </div>
       </header>
 
@@ -203,7 +210,7 @@ export default function Landing() {
       </section>
 
       {/* what is */}
-      <section className="px-6 md:px-12 py-16 max-w-6xl mx-auto">
+      <section id="features" className="px-6 md:px-12 py-16 max-w-6xl mx-auto scroll-mt-20">
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-12">
           What is <span className="gradient-text">AI Music Academy</span>?
         </h2>
@@ -219,7 +226,7 @@ export default function Landing() {
       </section>
 
       {/* pricing */}
-      <section className="px-6 md:px-12 py-16 max-w-6xl mx-auto">
+      <section id="pricing" className="px-6 md:px-12 py-16 max-w-6xl mx-auto scroll-mt-20">
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">
           Simple monthly pricing
         </h2>
@@ -266,7 +273,7 @@ export default function Landing() {
       </section>
 
       {/* testimonials */}
-      <section className="px-6 md:px-12 py-16 max-w-6xl mx-auto">
+      <section id="testimonials" className="px-6 md:px-12 py-16 max-w-6xl mx-auto scroll-mt-20">
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-12">
           Loved by artists & listeners
         </h2>
