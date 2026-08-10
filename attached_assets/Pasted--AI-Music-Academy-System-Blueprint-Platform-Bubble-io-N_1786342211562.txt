@@ -1,0 +1,774 @@
+# 🎵 AI Music Academy — System Blueprint
+
+**Platform:** Bubble.io (No-Code)
+**Type:** Two-sided music streaming and artist monetization platform
+
+---
+
+## 📋 TABLE OF CONTENTS
+
+1. [Executive Summary](#1-executive-summary)
+2. [Business Model](#2-business-model)
+3. [Branding & Design System](#3-branding--design-system)
+4. [User Roles & Access Control](#4-user-roles--access-control)
+5. [Subscription Tiers](#5-subscription-tiers)
+6. [Database Architecture](#6-database-architecture)
+7. [Complete Page Directory](#7-complete-page-directory)
+8. [Reusable Elements](#8-reusable-elements)
+9. [Privacy & Security Rules](#9-privacy--security-rules)
+10. [Third-Party Integrations](#10-third-party-integrations)
+
+---
+
+## 1. EXECUTIVE SUMMARY
+
+AI Music Academy is a two-sided music streaming and artist monetization platform built on Bubble.io. Artists upload AI-generated music, sell merchandise, and earn per-play stream revenue. Listeners stream music, follow artists, engage in a public community, and browse merch.
+
+**Platform Type:** Software as a Service (SaaS)
+**Target Users:** AI music artists (creators) + music enthusiasts (listeners)
+**Revenue Model:** Recurring monthly subscriptions (both sides)
+
+---
+
+## 2. BUSINESS MODEL
+
+### Revenue Sources
+- **Listener subscriptions:** $6.99/mo (Basic) or $14.99/mo (Pro)
+- **Artist subscriptions:** $49.99/mo (Basic, 1 merch slot) or $99.99/mo (Pro, 3 merch slots)
+
+### Non-Revenue Streams
+- **Merchandise:** External fulfillment (Printful/Shopify/Etsy) via direct `buy_link` per product. No platform cart, no commission, no transaction fees — artists retain 100% of merch revenue.
+- **Stream earnings for artists:** Small per-play payout tracked via internal ledger. Artists request withdrawals; operator processes payouts manually via admin dashboard.
+
+### Not Included
+- No advertising revenue
+- No data monetization
+- No transaction fees on merch
+- No cart / checkout on platform (external only)
+
+---
+
+## 3. BRANDING & DESIGN SYSTEM
+
+### Brand Identity
+**Name:** AI Music Academy
+**Tone:** Modern, tech-forward, premium, dark aesthetic
+**Personality:** Sleek music streaming meets creator marketplace
+
+### Color Palette
+
+**Backgrounds**
+- Main background: `#0a0a0a` (near-black)
+- Card background: `#1a1a1a` (slightly lighter)
+- Border/divider: `#333333`
+
+**Text**
+- Primary: `#FFFFFF` (white)
+- Secondary: `#AAAAAA` (light gray)
+- Tertiary: `#666666` (dark gray)
+- Disabled: `#555555`
+
+**Accent Colors**
+- Primary Cyan: `#00D4FF` (listeners, active states, primary CTAs)
+- Primary Purple: `#B537FF` (artists, secondary accents)
+- Success Green: `#00FF88` (active status, confirmations)
+- Warning Orange: `#FFA500` (free tier, alerts)
+- Error Red: `#FF4444` (banned, destructive actions)
+
+**Signature Gradient**
+```
+linear-gradient(135deg, #00D4FF 0%, #B537FF 100%)
+```
+Used for: page titles, primary CTAs, brand accents.
+
+### Typography
+
+**Font Stack:** Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif
+
+| Purpose | Size | Weight |
+|---|---|---|
+| Page titles | 32px | 700 (Bold) |
+| Section headings | 24px | 700 |
+| Card titles | 20px | 600 (Semi-bold) |
+| Body text | 16px | 400 (Regular) |
+| Labels | 14px | 600 |
+| Small text | 12px | 400 |
+| Tags/Badges | 11px | 600 (Uppercase) |
+
+### Component Standards
+
+**Cards**
+- Background: `#1a1a1a`
+- Border: 1px solid `#333333`
+- Border radius: 12px
+- Padding: 20–24px
+
+**Buttons**
+- Primary: gradient background, white text, 12px radius, 14–16px padding
+- Secondary: transparent bg, cyan border/text, hover fills
+- Destructive: `#FF4444` background, white text
+
+**Inputs**
+- Background: `#0a0a0a`
+- Border: 2px solid `#333333`
+- Focus border: `#00D4FF` with cyan glow shadow
+- Height: 56px, radius 12px
+
+**Spacing System**
+- Micro: 4px, 8px
+- Small: 12px, 16px
+- Medium: 24px, 32px
+- Large: 40px, 60px
+
+### Responsive Framework
+- **Desktop (1200px+):** Full sidebar layouts, multi-column grids
+- **Tablet (768–1199px):** Reduced columns, retained sidebar
+- **Mobile (<768px):** Hamburger nav, single-column grids
+- **Grid pattern:** Repeating Groups use "Min width per column" (220–280px) for auto-responsive behavior
+
+---
+
+## 4. USER ROLES & ACCESS CONTROL
+
+### Roles
+
+| Role | Identifier | Access Level |
+|---|---|---|
+| **Guest** | Not logged in | Public pages only |
+| **Listener** | `user_type = "LISTENER"` | Music streaming, community, merch browsing, profile |
+| **Artist** | `user_type = "ARTIST"` | All Listener access + upload, merch selling, analytics, earnings |
+| **Admin** | `is_admin = yes` | Full backend access (users, moderation, payouts) |
+
+### Access Rules Per User Type
+
+**Guests can access:**
+- Homepage, login, signup, subscription selection, legal pages, forgot/reset password
+- Cannot access any dashboard, streaming, community, or admin pages
+
+**Listeners can access:**
+- All Listener pages (Browse Music, My Library, Browse Merch, Community, My Profile)
+- Public artist profiles (view-only)
+- Cannot access Artist dashboard, upload, merch management, analytics
+- Cannot access any Admin page
+
+**Artists can access:**
+- All Listener pages (they can consume the platform too)
+- All Artist pages (Dashboard, Analytics, Merch Store, Cover Art, Upload, Releases, Profile)
+- Cannot access any Admin page
+
+**Admins can access:**
+- All Admin pages (Dashboard, Users, Moderation, Payouts)
+- Can view all user data (via admin privacy rule)
+- Admins log in through the same `login` page — access is unlocked by `is_admin = yes` on the User record
+- Non-admin users are server-side redirected out of admin pages
+
+### Enforcement Methods
+1. **Server-side page redirects** — every gated page checks `Current User` conditions on page load; wrong-role users are redirected to appropriate landing page
+2. **Privacy rules** — Bubble database-level rules restrict what data each user role can query (see Section 9)
+3. **Workflow conditions** — sensitive workflows check role before executing
+
+---
+
+## 5. SUBSCRIPTION TIERS
+
+All subscriptions are monthly, cancel anytime, processed via Stripe.
+
+| Plan | Price | Role | Benefits |
+|---|---|---|---|
+| **Listener Basic** | $6.99/mo | Listener | Ad-free streaming, standard quality audio, public community access |
+| **Listener Pro** | $14.99/mo | Listener | HQ audio, offline downloads, exclusive artist content, priority support |
+| **Artist Basic** | $49.99/mo | Artist | Unlimited track uploads, 1 active merch slot, analytics, AI cover art generator, community |
+| **Artist Pro** | $99.99/mo | Artist | All Basic features + 3 active merch slots |
+
+### Payment Flow
+1. User signs up → selects role → chooses plan
+2. Clicks plan → external redirect to Stripe Payment Link with `?client_reference_id=[User's unique ID]`
+3. Stripe processes payment → redirects user back to `subscription_success` page
+4. Stripe fires `checkout.session.completed` webhook to `stripe_webhook` backend endpoint
+5. Webhook matches user by `client_reference_id`, sets subscription fields
+6. Success page polls `has_onboarded` → redirects to dashboard when true
+
+### Subscription Management
+- **Manage/Cancel:** User clicks "Manage Subscription" on profile → API call to Stripe Customer Portal → redirect to Stripe-hosted portal for card updates, cancellation, invoice history
+- **Failed payments:** Stripe fires `invoice.payment_failed` → `subscription_status` set to `"past_due"`
+- **Cancellation:** Stripe fires `customer.subscription.deleted` → `subscription_status = "canceled"`, `has_onboarded = no`
+
+---
+
+## 6. DATABASE ARCHITECTURE
+
+### Core Data Types
+
+#### **User** (extends Bubble built-in)
+| Field | Type | Purpose |
+|---|---|---|
+| `artist_name` | text | Display name |
+| `bio` | text | User bio |
+| `profile_image` | image | Avatar |
+| `cover_image` | image | Banner/header |
+| `social_links` | text | Social media URLs |
+| `user_type` | text | ARTIST or LISTENER (uppercase) |
+| `is_admin` | yes/no | Admin flag (default no) |
+| `is_banned` | yes/no | Banned flag (default no) |
+| `subscription_plan` | text | listener_basic / listener_pro / artist_basic / artist_pro |
+| `subscription_status` | text | active / past_due / canceled |
+| `has_onboarded` | yes/no | True after successful Stripe checkout |
+| `stripe_customer_id` | text | Stripe customer reference |
+| `stripe_subscription_id` | text | Stripe subscription reference |
+| `stripe_price_id` | text | Stripe price reference |
+| `stream_balance` | number | Pending earnings (artists) |
+| `total_earnings` | number | Lifetime earnings (artists) |
+
+#### **Track**
+| Field | Type | Purpose |
+|---|---|---|
+| `track_name` | text | Track title |
+| `artist` | User | Uploader reference |
+| `audio_file` | file | Audio (mp3/wav/m4a) |
+| `cover_art` | image | Track cover |
+| `genre` | text | Genre category |
+| `release_date` | date | Release date |
+| `is_published` | yes/no | Public/draft |
+| `play_count` | number | Total plays |
+
+#### **Merch_Product**
+| Field | Type | Purpose |
+|---|---|---|
+| `product_name` | text | Product name |
+| `artist` | User | Owner |
+| `description` | text | Product description |
+| `category` | text | t-shirt / hoodie / accessories |
+| `price` | number | USD |
+| `product_image` | image | Product photo |
+| `buy_link` | text | External store URL (Printful/Shopify/Etsy) |
+| `is_active` | yes/no | Visible in store (default no) |
+
+#### **Play_History**
+| Field | Type | Purpose |
+|---|---|---|
+| `listener` | User | Who played |
+| `track` | Track | What was played |
+| `played_at` | date | When |
+
+Play tracking triggers backend workflow `play_increment_balances` (bypasses privacy rules) to update `play_count` and artist `stream_balance`.
+
+#### **Liked_Track**
+| Field | Type | Purpose |
+|---|---|---|
+| `listener` | User | Who liked |
+| `track` | Track | Which track |
+| `liked_date` | date | When liked |
+
+#### **Following**
+| Field | Type | Purpose |
+|---|---|---|
+| `follower` | User | Follower |
+| `artist` | User | Followed artist |
+| `followed_date` | date | When followed |
+
+#### **Post** (Community)
+| Field | Type | Purpose |
+|---|---|---|
+| `author` | User | Post creator |
+| `content` | text | Post body |
+| `image` | image | Optional attachment |
+| `like_count` | number | Total likes |
+| `track` | Track | Optional track attachment |
+
+Note: Post also uses Bubble's built-in `Creator` field (User).
+
+#### **Comment**
+| Field | Type | Purpose |
+|---|---|---|
+| `post` | Post | Parent post |
+| `commenter` | User | Comment author |
+| `content` | text | Comment body |
+
+#### **Post_Like** (join table)
+| Field | Type | Purpose |
+|---|---|---|
+| `post` | Post | Liked post |
+| `user` | User | Liker |
+
+#### **Report**
+| Field | Type | Purpose |
+|---|---|---|
+| `reporter` | User | Who reported |
+| `post` | Post | Reported post |
+| `reason` | text | Report reason |
+| `is_reviewed` | yes/no | Handled by admin (default no) |
+
+#### **Banned_Word**
+| Field | Type | Purpose |
+|---|---|---|
+| `word` | text | Filtered term |
+
+Used alongside PurgoMalum API for supplementary profanity filtering.
+
+#### **Withdrawal_Request**
+| Field | Type | Purpose |
+|---|---|---|
+| `artist` | User | Requesting artist |
+| `amount` | number | USD |
+| `status` | text | pending / paid |
+| `requested_at` | date | Request timestamp |
+| `paid_at` | date | Payment timestamp |
+
+---
+
+## 7. COMPLETE PAGE DIRECTORY
+
+### Notation
+🌐 = Public (guest access) · 🎧 = Listener · 🎨 = Artist · 🛡️ = Admin · 🔒 = Access-controlled
+
+---
+
+### PUBLIC PAGES
+
+#### 🌐 `index` — Homepage / Landing
+**Access:** All (guest + logged-in)
+**Purpose:** Marketing landing page introducing the platform
+**Contains:**
+- Hero section with platform pitch
+- "What is AI Music Academy" explainer
+- Featured artists showcase
+- Pricing tiers (all 4 plans visible)
+- Testimonials/social proof
+- CTAs: Sign Up, Log In
+
+#### 🌐 `login`
+**Access:** Guests only (logged-in users redirected to their dashboard)
+**Purpose:** User authentication
+**Contains:**
+- Email + password inputs
+- "Forgot password?" link
+- Link to signup
+- Redirects post-login:
+  - Admin → `admin_dashboard`
+  - Artist → `artist_dashboard2`
+  - Listener → `listener_browse`
+
+#### 🌐 `signup`
+**Access:** Guests only
+**Purpose:** New account creation
+**Contains:**
+- Role selector (Artist / Listener radio buttons)
+- Email + password
+- Sets `user_type` to `ARTIST` or `LISTENER` (uppercase enforced)
+- After signup → redirects to `subscription_select`
+
+#### 🌐 `subscription_select`
+**Access:** Newly signed up users (before `has_onboarded = yes`)
+**Purpose:** Choose subscription plan based on role
+**Contains:**
+- Shows plans matching selected role (Listener sees Listener plans, Artist sees Artist plans)
+- Each plan card → external redirect to Stripe Payment Link
+- URL includes `?client_reference_id=[Current User's unique id]`
+
+#### 🌐 `subscription_success`
+**Access:** Post-checkout users (redirected from Stripe)
+**Purpose:** Wait for webhook to confirm subscription
+**Contains:**
+- "Setting up your account..." message
+- Auto-polls `Current User's has_onboarded` every 2–3 seconds
+- Redirects to `listener_browse` or `artist_dashboard2` when webhook completes
+
+#### 🌐 `forgot_password`
+**Access:** All
+**Purpose:** Request password reset email
+**Contains:** Email input, send reset link
+
+#### 🌐 `reset_password`
+**Access:** Users with valid reset token (from email)
+**Purpose:** Set new password
+**Contains:** New password + confirm inputs
+
+#### 🌐 `privacy_policy`
+**Access:** All
+**Purpose:** US-compliant privacy policy
+**Compliance:** CCPA, COPPA, DMCA
+
+#### 🌐 `terms_conditions`
+**Access:** All
+**Purpose:** US-compliant terms of service
+**Compliance:** Includes arbitration clause
+
+---
+
+### LISTENER PAGES
+
+#### 🎧 `listener_browse` — Browse Music (Listener Home)
+**Access:** Logged-in Listeners + Artists
+**Non-listener redirect:** Guests → `login`
+**Purpose:** Discover and stream music
+**Contains:**
+- Search bar (top) — searches tracks, artists, genres
+- Genre filter tabs (All, Electronic, Hip-Hop, Rock, R&B, Jazz, Classical, Ambient, etc.)
+- "All Tracks" grid — responsive card grid
+- Track cards: cover art, name, artist, genre tag, play button, like heart, more options
+- Persistent `Music_Player_Bar` at bottom
+
+#### 🎧 `listener_library` — My Library
+**Access:** Logged-in Listeners + Artists
+**Purpose:** Personal music collection
+**Contains:**
+- Stats: Liked Songs count, Following count, Total Listen Time
+- Tab: **Liked Songs** — list view with unlike button
+- Tab: **Following** — artist grid with unfollow button
+- Empty states for both tabs
+
+#### 🎧 `listener_merch` — Browse Merch
+**Access:** Logged-in Listeners + Artists
+**Purpose:** Browse merchandise from all artists
+**Contains:**
+- Product grid (all `is_active = yes` products)
+- Category filters (t-shirt, hoodie, accessories)
+- Product cards: image, name, artist, price, Buy Now button
+- Buy Now → opens `buy_link` in new tab (external checkout)
+
+#### 🎧 `community` — Community Feed
+**Access:** Logged-in users only (Listeners, Artists, Admins)
+**Purpose:** Shared public community for all users
+**Contains:**
+- Compose new post (text + optional image + optional track attachment)
+- Chronological feed of all posts
+- Post interactions: Like, Comment, Report
+- Profanity filter on submit (PurgoMalum API + Banned_Word data type)
+- Edit/Delete on own posts
+- Report action → creates Report record → surfaces in admin moderation queue
+
+#### 🎧 `listener_profile` — My Profile (Listener)
+**Access:** Logged-in Listeners (and Artists via their own settings)
+**Purpose:** Account settings and management
+**Contains:**
+- Edit profile (name, bio, avatar)
+- Change password
+- Notification preferences
+- Manage Subscription button → opens Stripe Customer Portal
+- Sign Out
+
+---
+
+### ARTIST PAGES
+
+#### 🎨 `artist_dashboard2` — Artist Dashboard
+**Access:** Logged-in Artists only
+**Non-artist redirect:** Listeners → `listener_browse`, Guests → `login`
+**Purpose:** Artist home with earnings + activity overview
+**Contains:**
+- Sidebar navigation (Dashboard, Analytics, Merch Store, Cover Art, Upload Audio, My Releases, My Profile, Logout, Settings)
+- 4 stat cards: Total Tracks, Total Plays, Stream Earnings, All Time Revenue
+- Recent Activity feed (track plays with counts and dates)
+- Withdrawal History (embedded — no separate withdrawal page)
+- Request Withdrawal button
+
+#### 🎨 `artist_analytics` — Analytics
+**Access:** Logged-in Artists only
+**Purpose:** Track performance and audience insights
+**Contains:**
+- Date range filter (7 days, 30 days, 90 days, All time)
+- Stat cards: Plays, Listeners, Revenue, Avg Listen Time
+- Top 5 performing tracks
+- Revenue breakdown (streaming vs merch vs tips)
+- Audience insights (new vs returning listeners)
+
+#### 🎨 `artist_merch_store` — Merch Store Management
+**Access:** Logged-in Artists only
+**Purpose:** Manage merchandise products
+**Contains:**
+- Slot limit indicator (1 for Basic, 3 for Pro plan)
+- Add Product button (blocked with alert if at limit)
+- Product cards: image, name, category, price, Edit/Delete/Toggle Visibility actions
+- Add/Edit Product popup (product name, description, category, price, image, buy link)
+- Toggle Visibility respects slot limits
+
+#### 🎨 `artist_cover_art` — AI Cover Art Manager
+**Access:** Logged-in Artists only
+**Purpose:** Generate and manage AI cover art
+**Contains:**
+- OpenAI-powered cover art generator (`gpt-image-1` model)
+- Style toggle presets
+- Prompt input
+- Generated image preview with Save/Download options
+- Gallery of saved covers (base64 storage)
+- Assign cover to track flow
+
+#### 🎨 `artist_upload` — Upload Audio
+**Access:** Logged-in Artists only
+**Purpose:** Upload new music tracks
+**Contains:**
+- Track name input
+- Audio file uploader (mp3/wav/m4a)
+- Cover art uploader
+- Genre input
+- Release date picker
+- "Publish immediately" checkbox
+- Submit button → creates Track record
+
+#### 🎨 `artist_releases` — My Releases
+**Access:** Logged-in Artists only
+**Purpose:** Manage uploaded tracks (fully functional CRUD)
+**Contains:**
+- Upload New Track button (navigates to `artist_upload`)
+- Filter dropdown (All, Newest, Oldest, Most Plays, A-Z, Z-A)
+- Search input (filters by name/genre)
+- Track cards: cover, name, genre, release date, play count
+- Edit button → opens Edit Track popup
+- Delete button → opens Delete Confirmation popup
+- Active/Inactive status badge
+
+#### 🎨 `artist_my_profile` — My Profile (Artist)
+**Access:** Logged-in Artists only
+**Purpose:** Edit artist profile + account settings
+**Contains:**
+- All fields from `listener_profile` +
+- Artist name, bio, cover image, social links
+- Manage Subscription → Stripe Customer Portal
+- Payout method info
+
+---
+
+### CONTEXTUAL PAGES
+
+#### 🔒 `artist_profile` — Public Artist Profile
+**Access:** All logged-in users
+**Purpose:** Public artist page (viewed by listeners)
+**Accessed via:** Clicking artist name/avatar from track cards, community posts, etc.
+**Contains:**
+- Artist bio, cover image, avatar
+- Play All button
+- Track list (published tracks only)
+- Merch grid (active products only)
+- Follow/Unfollow button
+- Recent community posts by artist
+
+---
+
+### ADMIN PAGES
+
+All admin pages have a **server-side redirect on load:**
+```
+When Current User's is_admin is not yes → Go to page listener_browse
+```
+
+#### 🛡️ `admin_dashboard` — Admin Overview
+**Access:** Admins only
+**Purpose:** Platform-wide metrics
+**Contains:**
+- Header: "Admin Dashboard" title + admin email pill
+- **User Metrics (4 cards):** Total Users, Active Listeners, Active Artists, Free Users
+- **Revenue Metrics:** Big MRR hero card + per-tier breakdown (Listener Basic revenue, Listener Pro revenue, Artist Basic revenue, Artist Pro revenue)
+- **Content Metrics (3 cards):** Total Tracks, Merch Products, Community Posts
+- Requires "Show parentheses in dynamic expressions" enabled in Bubble Settings for correct MRR math
+
+#### 🛡️ `admin_users` — User Management
+**Access:** Admins only
+**Purpose:** View, search, filter, ban users
+**Contains:**
+- Search input (searches by artist_name)
+- Type filter dropdown (Listener / Artist)
+- Table with columns: USER, TYPE, PLAN, STATUS, ACTIONS
+- Type badge: cyan for LISTENER, purple for ARTIST
+- Status badge: green (ACTIVE), orange (FREE), red (BANNED)
+- Ban/Unban single-button toggle per user
+- **Critical:** Requires User privacy rule "Admin can see all users" WHEN `Current User's is_admin is yes`
+
+#### 🛡️ `admin_moderation` — Content Moderation Queue
+**Access:** Admins only
+**Purpose:** Review reported posts
+**Contains:**
+- Queue of pending Reports (`is_reviewed = no`) sorted newest first
+- Card layout per report:
+  - Author avatar (cyan for listener, purple for artist) + name + posted date
+  - Red "⚠ REPORTED" badge
+  - Nested dark box with post content (text + optional image)
+  - Reporter info: "Reported by [reporter] on [date]"
+  - "Reason: [reason]" line
+  - Dismiss button (grey) — marks Report `is_reviewed = yes`, keeps post
+  - Delete Post button (red) — cascade: marks all Reports for post as reviewed, then deletes the Post
+- Empty state when no pending reports
+
+#### 🛡️ `admin_payouts` — Payout Tracking
+**Access:** Admins only
+**Purpose:** Manage artist withdrawal requests and stream earnings payouts
+**Contains:**
+- Total payable summary (sum of all `stream_balance` values)
+- Withdrawal request queue (pending requests)
+- List of artists with `stream_balance > 0`
+- Mark as Paid button per artist (resets balance, updates Withdrawal_Request status)
+- Payment history log
+
+---
+
+## 8. REUSABLE ELEMENTS
+
+Reusables enable consistent UI patterns across multiple pages while maintaining a single source of truth.
+
+### `Listener_Navigation`
+**Used on:** All listener pages (`listener_browse`, `listener_library`, `listener_merch`, `community`, `listener_profile`)
+**Contains:**
+- Logo + brand mark ("AI MUSIC")
+- Collapse toggle
+- Nav items with icons:
+  - 🎵 Browse Music
+  - ❤️ My Library
+  - 🛍️ Browse Merch
+  - 💬 Community
+  - 👤 My Profile
+- Logout button
+- Active state: cyan background tint on current page
+
+### `Artist_Sidebar`
+**Used on:** All artist pages
+**Contains:**
+- Section header: "DASHBOARD"
+- Nav buttons (cyan border style):
+  - Dashboard
+  - Analytics
+  - Merch Store
+  - Cover Art
+  - Upload Audio
+  - My Releases
+  - My Profile
+  - Logout
+- Settings gear icon
+- Footer: "© 2025 AI Music Academy"
+
+### `Admin_Sidebar`
+**Used on:** All admin pages
+**Contains:**
+- Header: "ADMIN PANEL" (cyan) + "AI Music Academy" subtitle
+- Nav items with emoji icons:
+  - 📊 Dashboard
+  - 👥 Users
+  - 🛡️ Moderation
+  - 💰 Payouts
+- Footer: admin email + red Sign Out button
+- Active state per page (cyan tint + left border)
+
+### `Music_Player_Bar`
+**Used on:** All listener + artist pages (persistent bottom bar)
+**Contains:**
+- Current track cover art (56x56)
+- Track name + artist name
+- Playback controls: Previous, Play/Pause, Next
+- Progress bar with time display
+- Volume slider
+- Like button
+
+---
+
+## 9. PRIVACY & SECURITY RULES
+
+Bubble enforces data access at the database level via Privacy Rules. Every data type has role-based restrictions.
+
+### User
+| Rule | When | Fields |
+|---|---|---|
+| Everyone else | Default | Public fields only: `artist_name`, `bio`, `profile_image`, `cover_image` |
+| User's own record | `This User is Current User` | All fields |
+| **Admin override** | `Current User's is_admin is yes` | All fields + Find in searches |
+
+Without the admin override, admin RepeatingGroups return empty data.
+
+### Track
+| Rule | When | Fields |
+|---|---|---|
+| Public tracks | `This Track's is_published is yes` | All viewable |
+| Creator | `This Track's artist is Current User` | Full access + edit/delete |
+| Admin | `Current User's is_admin is yes` | Full access |
+
+### Merch_Product
+| Rule | When | Fields |
+|---|---|---|
+| Active products | `This Merch_Product's is_active is yes` | All viewable |
+| Creator | `This Merch_Product's artist is Current User` | Full access + edit/delete |
+| Admin | `Current User's is_admin is yes` | Full access |
+
+### Post & Comment
+| Rule | When | Fields |
+|---|---|---|
+| Logged-in users | `Current User is logged in` | All viewable |
+| Creator | `This Post's author is Current User` | Edit/delete own |
+| Admin | `Current User's is_admin is yes` | Full moderation access |
+
+### Report
+| Rule | When | Fields |
+|---|---|---|
+| Reporter | `This Report's reporter is Current User` | View own reports |
+| Admin | `Current User's is_admin is yes` | Full access |
+
+### Banned_Word
+| Rule | When | Fields |
+|---|---|---|
+| Admin only | `Current User's is_admin is yes` | Full access |
+
+### Play_History
+- **No user-facing privacy rule.** Only accessed via backend workflow `play_increment_balances` which uses "Ignore privacy rules" to bypass restrictions and update artist balances.
+
+### Additional Security
+- **Server-side redirects** on all gated pages (checked on page load via workflow)
+- **`is_banned = yes` check** on login → banned users get logout + error
+- **Password reset** via Bubble's built-in secure token flow
+- **API keys stored in Bubble Backend Workflows** (Stripe secret key, OpenAI key) — never exposed to frontend
+
+---
+
+## 10. THIRD-PARTY INTEGRATIONS
+
+### Stripe (Payments)
+**Setup:** API Connector with Bearer auth + `Content-Type: application/x-www-form-urlencoded` shared header
+
+**Products (4 Payment Links):**
+- Listener Basic ($6.99)
+- Listener Pro ($14.99)
+- Artist Basic ($49.99)
+- Artist Pro ($99.99)
+
+**Webhook Events Subscribed:**
+- `checkout.session.completed` — activates subscription
+- `customer.subscription.updated` — handles plan changes
+- `customer.subscription.deleted` — cancels subscription
+- `invoice.payment_failed` — sets past_due status
+
+**API Calls Configured:**
+- Create Customer Portal Session (POST)
+- Cancel Subscription (DELETE)
+
+**Critical Note:** Bubble's Form-data body type sends `multipart/form-data` which Stripe rejects. Use Body type "JSON" and manually write `key=value` pairs.
+
+### OpenAI (AI Cover Art)
+**Model:** `gpt-image-1`
+**Response format:** base64
+**Storage:** Base64 stored directly in Bubble file field via Base64 File Uploader plugin (Zeroqode)
+
+### PurgoMalum (Profanity Filter)
+**Type:** REST API (Action type in API Connector)
+**Response:** Plain text `true`/`false`
+**Supplementary:** Banned_Word data type for custom terms
+
+### Merch Fulfillment
+**External providers:** Printful / Shopify / Etsy
+**Integration:** Direct `buy_link` per product — no platform-side cart, no commission, no transaction fees
+
+### Plugins (Bubble Marketplace)
+- Relative Time with Moment.js
+- Base64 File Uploader and Downloader (Zeroqode)
+
+---
+
+## 📊 PAGE COUNT SUMMARY
+
+| Category | Count | Pages |
+|---|---|---|
+| Public | 9 | index, login, signup, subscription_select, subscription_success, forgot_password, reset_password, privacy_policy, terms_conditions |
+| Listener | 5 | listener_browse, listener_library, listener_merch, community, listener_profile |
+| Artist | 7 | artist_dashboard2, artist_analytics, artist_merch_store, artist_cover_art, artist_upload, artist_releases, artist_my_profile |
+| Admin | 4 | admin_dashboard, admin_users, admin_moderation, admin_payouts |
+| Contextual | 1 | artist_profile (public view) |
+| **TOTAL PAGES** | **26** | |
+| Reusable Elements | 4 | Listener_Navigation, Artist_Sidebar, Admin_Sidebar, Music_Player_Bar |
+
+---
+
+**END OF BLUEPRINT**
