@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { apiSend, apiForm, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/lib/toast";
 import { Avatar, Modal, Spinner, StatusBadge } from "@/components/ui";
 import { planLabel } from "@/lib/format";
-import { Camera } from "lucide-react";
+import { Camera, LogOut } from "lucide-react";
 
 /**
  * Shared account settings page (listener profile). Artists get extra fields on
@@ -21,6 +22,16 @@ export default function Profile({ artistExtras }: { artistExtras?: boolean }) {
   const [payout, setPayout] = useState(user?.payoutMethod ?? "");
   const [pw, setPw] = useState({ current: "", next: "", confirm: "" });
   const [portalOpen, setPortalOpen] = useState(false);
+  const qc = useQueryClient();
+  const [, navigate] = useLocation();
+
+  const signOut = useMutation({
+    mutationFn: () => apiSend("POST", "/auth/logout"),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["me"] });
+      navigate("/login");
+    },
+  });
 
   const saveProfile = useMutation({
     mutationFn: () =>
@@ -248,6 +259,21 @@ export default function Profile({ artistExtras }: { artistExtras?: boolean }) {
         </p>
         <button className="btn btn-secondary" onClick={() => portal.mutate()} disabled={portal.isPending}>
           Manage Subscription
+        </button>
+      </div>
+
+      {/* sign out */}
+      <div className="card mt-6 flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="font-bold text-lg">Sign Out</h2>
+          <p className="text-txt2 text-sm">End your session on this device.</p>
+        </div>
+        <button
+          className="btn btn-danger"
+          onClick={() => signOut.mutate()}
+          disabled={signOut.isPending}
+        >
+          <LogOut size={16} /> {signOut.isPending ? "Signing out…" : "Sign Out"}
         </button>
       </div>
 
