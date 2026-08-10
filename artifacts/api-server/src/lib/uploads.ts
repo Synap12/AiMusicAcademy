@@ -28,9 +28,10 @@ for (const sub of ["audio", "images"]) {
 const AUDIO_EXT = new Set([".mp3", ".wav", ".m4a", ".ogg", ".flac"]);
 const IMAGE_EXT = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"]);
 
-function storageFor(sub: "audio" | "images") {
+function storageFor(subFor: (file: Express.Multer.File) => "audio" | "images") {
   return multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, path.join(UPLOADS_ROOT, sub)),
+    destination: (_req, file, cb) =>
+      cb(null, path.join(UPLOADS_ROOT, subFor(file))),
     filename: (_req, file, cb) => {
       const ext = path.extname(file.originalname).toLowerCase() || ".bin";
       cb(null, `${crypto.randomBytes(12).toString("hex")}${ext}`);
@@ -38,8 +39,10 @@ function storageFor(sub: "audio" | "images") {
   });
 }
 
+// Track uploads carry both an audio file and an optional cover image, so the
+// destination must follow the field, not the upload kind.
 export const audioUpload = multer({
-  storage: storageFor("audio"),
+  storage: storageFor((file) => (file.fieldname === "audio" ? "audio" : "images")),
   limits: { fileSize: 60 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
@@ -54,7 +57,7 @@ export const audioUpload = multer({
 });
 
 export const imageUpload = multer({
-  storage: storageFor("images"),
+  storage: storageFor(() => "images"),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
