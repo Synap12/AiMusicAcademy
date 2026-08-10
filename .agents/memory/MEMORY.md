@@ -1,0 +1,1 @@
+- [Preview routing](preview-routing.md) — keep the frontend artifact at `/`; reserve `/api` for backend endpoints.
