@@ -2,6 +2,7 @@
 
 # compiled output
 dist
+!artifacts/web/dist
 tmp
 out-tsc
 *.tsbuildinfo
