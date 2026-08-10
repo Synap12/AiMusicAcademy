@@ -100,11 +100,12 @@ export default function Profile({ artistExtras }: { artistExtras?: boolean }) {
   if (!user) return <Spinner center />;
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-5xl">
       <h1 className="text-[32px] font-bold gradient-text mb-6">My Profile</h1>
 
-      {/* identity */}
-      <div className="card mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      {/* left column: identity */}
+      <div className="card">
         <div className="flex items-center gap-5 mb-6">
           <div className="relative">
             <Avatar
@@ -187,8 +188,10 @@ export default function Profile({ artistExtras }: { artistExtras?: boolean }) {
         </div>
       </div>
 
+      {/* right column: account cards */}
+      <div className="space-y-6">
       {/* password */}
-      <div className="card mb-6">
+      <div className="card">
         <h2 className="font-bold text-lg mb-4">Change Password</h2>
         <div className="space-y-4">
           <input
@@ -228,7 +231,7 @@ export default function Profile({ artistExtras }: { artistExtras?: boolean }) {
       </div>
 
       {/* notifications */}
-      <div className="card mb-6">
+      <div className="card">
         <h2 className="font-bold text-lg mb-4">Notification Preferences</h2>
         {(
           [
@@ -263,7 +266,7 @@ export default function Profile({ artistExtras }: { artistExtras?: boolean }) {
       </div>
 
       {/* sign out */}
-      <div className="card mt-6 flex items-center justify-between gap-4 flex-wrap">
+      <div className="card flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h2 className="font-bold text-lg">Sign Out</h2>
           <p className="text-txt2 text-sm">End your session on this device.</p>
@@ -275,6 +278,8 @@ export default function Profile({ artistExtras }: { artistExtras?: boolean }) {
         >
           <LogOut size={16} /> {signOut.isPending ? "Signing out…" : "Sign Out"}
         </button>
+      </div>
+      </div>
       </div>
 
       <Modal open={portalOpen} onClose={() => setPortalOpen(false)} title="Manage subscription">

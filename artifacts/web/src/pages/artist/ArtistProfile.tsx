@@ -26,7 +26,7 @@ export default function ArtistProfile() {
   return (
     <div>
       <div
-        className="relative rounded-2xl h-40 md:h-52 bg-card border border-line bg-cover bg-center mb-8 max-w-2xl"
+        className="relative rounded-2xl h-40 md:h-52 bg-card border border-line bg-cover bg-center mb-8 max-w-5xl"
         style={
           user?.coverImage
             ? { backgroundImage: `url(${user.coverImage})` }

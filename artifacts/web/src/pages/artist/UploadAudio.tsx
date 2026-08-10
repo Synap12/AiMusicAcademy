@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiForm, ApiError } from "@/lib/api";
 import { useToast } from "@/lib/toast";
-import { UploadCloud, Music } from "lucide-react";
+import { UploadCloud, Music, Image as ImageIcon, Sparkles, CheckCircle2 } from "lucide-react";
 
 /** Read a local audio file's duration so plays can compute listen time. */
 function readDuration(file: File): Promise<number | null> {
@@ -23,6 +23,11 @@ function readDuration(file: File): Promise<number | null> {
   });
 }
 
+function prettySize(bytes: number): string {
+  if (bytes > 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  return `${Math.round(bytes / 1024)} KB`;
+}
+
 export default function ArtistUpload() {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -33,6 +38,16 @@ export default function ArtistUpload() {
   const [publish, setPublish] = useState(true);
   const [audio, setAudio] = useState<File | null>(null);
   const [cover, setCover] = useState<File | null>(null);
+
+  const coverPreview = useMemo(
+    () => (cover ? URL.createObjectURL(cover) : null),
+    [cover],
+  );
+  useEffect(() => {
+    return () => {
+      if (coverPreview) URL.revokeObjectURL(coverPreview);
+    };
+  }, [coverPreview]);
 
   const upload = useMutation({
     mutationFn: async () => {
@@ -59,92 +74,152 @@ export default function ArtistUpload() {
   });
 
   return (
-    <div className="max-w-xl">
-      <h1 className="text-[32px] font-bold gradient-text mb-6">Upload Audio</h1>
-      <div className="card space-y-5">
-        <div>
-          <label className="label">Track name</label>
-          <input
-            className="input"
-            value={trackName}
-            maxLength={120}
-            onChange={(e) => setTrackName(e.target.value)}
-            placeholder="e.g. Midnight Circuit"
-          />
-        </div>
+    <div className="max-w-5xl">
+      <h1 className="text-[32px] font-bold gradient-text mb-2">Upload Audio</h1>
+      <p className="text-txt2 mb-7">Add a new track to your catalog.</p>
 
-        <div>
-          <label className="label">Audio file (mp3 / wav / m4a)</label>
-          <label className="card !p-6 border-dashed flex flex-col items-center gap-2 cursor-pointer hover:!border-cyan transition-colors">
-            <UploadCloud size={28} className="text-cyan" />
-            <span className="text-sm text-txt2">
-              {audio ? audio.name : "Click to choose an audio file"}
-            </span>
-            <input
-              type="file"
-              accept=".mp3,.wav,.m4a,.ogg,.flac,audio/*"
-              className="hidden"
-              onChange={(e) => setAudio(e.target.files?.[0] ?? null)}
-            />
-          </label>
-        </div>
-
-        <div>
-          <label className="label">Cover art (optional)</label>
-          <label className="card !p-5 border-dashed flex flex-col items-center gap-2 cursor-pointer hover:!border-purple transition-colors">
-            <Music size={24} className="text-purple" />
-            <span className="text-sm text-txt2">
-              {cover ? cover.name : "Click to choose cover art"}
-            </span>
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => setCover(e.target.files?.[0] ?? null)}
-            />
-          </label>
-          <p className="text-txt3 text-xs mt-1.5">
-            No cover? Generate one in the AI Cover Art studio and assign it later.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="label">Genre</label>
-            <select className="select" value={genre} onChange={(e) => setGenre(e.target.value)}>
-              {["Electronic", "Hip-Hop", "Rock", "R&B", "Jazz", "Classical", "Ambient", "Pop", "Lo-Fi", "Other"].map((g) => (
-                <option key={g} value={g}>{g}</option>
-              ))}
-            </select>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {/* left: files */}
+        <div className="space-y-6">
+          <div className="card">
+            <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <Music size={18} className="text-cyan" /> Audio File
+            </h2>
+            <label className="border-2 border-dashed border-line rounded-xl p-8 flex flex-col items-center gap-3 cursor-pointer hover:border-cyan transition-colors bg-bg">
+              {audio ? (
+                <>
+                  <CheckCircle2 size={30} className="text-green" />
+                  <span className="text-sm font-semibold text-center break-all">{audio.name}</span>
+                  <span className="text-txt3 text-xs">
+                    {prettySize(audio.size)} — click to replace
+                  </span>
+                </>
+              ) : (
+                <>
+                  <UploadCloud size={30} className="text-cyan" />
+                  <span className="text-sm text-txt2">Click to choose an audio file</span>
+                  <span className="text-txt3 text-xs">mp3, wav, or m4a · up to 60 MB</span>
+                </>
+              )}
+              <input
+                type="file"
+                accept=".mp3,.wav,.m4a,.ogg,.flac,audio/*"
+                className="hidden"
+                onChange={(e) => setAudio(e.target.files?.[0] ?? null)}
+              />
+            </label>
           </div>
+
+          <div className="card">
+            <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <ImageIcon size={18} className="text-purple" /> Cover Art
+              <span className="text-txt3 text-xs font-normal">(optional)</span>
+            </h2>
+            <div className="flex gap-5 items-start">
+              <label className="shrink-0 cursor-pointer group">
+                {coverPreview ? (
+                  <img
+                    src={coverPreview}
+                    alt="Cover preview"
+                    className="w-32 h-32 rounded-xl object-cover border border-line group-hover:opacity-80 transition-opacity"
+                  />
+                ) : (
+                  <div className="w-32 h-32 rounded-xl border-2 border-dashed border-line flex flex-col items-center justify-center gap-1.5 text-txt3 group-hover:border-purple transition-colors bg-bg">
+                    <ImageIcon size={22} />
+                    <span className="text-[11px]">Choose image</span>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => setCover(e.target.files?.[0] ?? null)}
+                />
+              </label>
+              <div className="text-sm text-txt2 space-y-2">
+                <p>Square images look best (1:1). PNG, JPG, or SVG up to 10 MB.</p>
+                <p className="flex items-start gap-1.5 text-txt3 text-xs">
+                  <Sparkles size={14} className="text-purple shrink-0 mt-0.5" />
+                  No cover yet? Generate one in the AI Cover Art studio and assign
+                  it to this track afterwards.
+                </p>
+                {cover && (
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => setCover(null)}
+                  >
+                    Remove image
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* right: details + submit */}
+        <div className="card space-y-5">
+          <h2 className="font-bold text-lg">Track Details</h2>
           <div>
-            <label className="label">Release date</label>
+            <label className="label">Track name</label>
             <input
               className="input"
-              type="date"
-              value={releaseDate}
-              onChange={(e) => setReleaseDate(e.target.value)}
+              value={trackName}
+              maxLength={120}
+              onChange={(e) => setTrackName(e.target.value)}
+              placeholder="e.g. Midnight Circuit"
             />
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Genre</label>
+              <select className="select" value={genre} onChange={(e) => setGenre(e.target.value)}>
+                {["Electronic", "Hip-Hop", "Rock", "R&B", "Jazz", "Classical", "Ambient", "Pop", "Lo-Fi", "Other"].map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label">Release date</label>
+              <input
+                className="input"
+                type="date"
+                value={releaseDate}
+                onChange={(e) => setReleaseDate(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <label className="flex items-center justify-between gap-3 cursor-pointer border border-line rounded-xl px-4 py-3.5">
+            <div>
+              <p className="font-semibold text-sm">Publish immediately</p>
+              <p className="text-txt3 text-xs">
+                {publish
+                  ? "Listeners can stream this track right away."
+                  : "Saved as a draft — publish later from My Releases."}
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={publish}
+              onChange={(e) => setPublish(e.target.checked)}
+              className="w-5 h-5 accent-[#00D4FF] shrink-0"
+            />
+          </label>
+
+          <button
+            className="btn btn-primary w-full !py-4"
+            disabled={!trackName.trim() || !audio || upload.isPending}
+            onClick={() => upload.mutate()}
+          >
+            <UploadCloud size={17} />
+            {upload.isPending ? "Uploading…" : publish ? "Upload & Publish" : "Save as Draft"}
+          </button>
+          {!audio && (
+            <p className="text-txt3 text-xs text-center">
+              Choose an audio file to enable upload.
+            </p>
+          )}
         </div>
-
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={publish}
-            onChange={(e) => setPublish(e.target.checked)}
-            className="w-5 h-5 accent-[#00D4FF]"
-          />
-          <span className="text-txt2 text-sm">Publish immediately</span>
-        </label>
-
-        <button
-          className="btn btn-primary w-full"
-          disabled={!trackName.trim() || !audio || upload.isPending}
-          onClick={() => upload.mutate()}
-        >
-          {upload.isPending ? "Uploading…" : publish ? "Upload & Publish" : "Save as Draft"}
-        </button>
       </div>
     </div>
   );
