@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="g" gradientTransform="rotate(142 0.5 0.5)">
+      <stop offset="0%" stop-color="#00D4FF" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#B537FF" stop-opacity="0.55"/>
+    </linearGradient>
+    <filter id="blur"><feGaussianBlur stdDeviation="18"/></filter>
+  </defs>
+  <rect width="1024" height="1024" fill="#0a0a1a"/>
+  <g filter="url(#blur)"><circle cx="879" cy="438" r="123" fill="#00D4FF" opacity="0.23"/><circle cx="622" cy="863" r="157" fill="#B537FF" opacity="0.19"/><circle cx="418" cy="618" r="149" fill="#00D4FF" opacity="0.40"/><circle cx="253" cy="948" r="241" fill="#B537FF" opacity="0.35"/><circle cx="667" cy="161" r="73" fill="#00D4FF" opacity="0.32"/><circle cx="72" cy="233" r="143" fill="#B537FF" opacity="0.17"/><circle cx="16" cy="381" r="148" fill="#00D4FF" opacity="0.14"/></g>
+  <rect width="1024" height="1024" fill="url(#g)"/>
+  <text x="64" y="920" font-family="Inter, sans-serif" font-size="44" font-weight="700" fill="#FFFFFF" opacity="0.9">neon city at midnight</text>
+  <text x="64" y="972" font-family="Inter, sans-serif" font-size="26" fill="#FFFFFF" opacity="0.55">AI MUSIC ACADEMY</text>
+</svg>
