@@ -44,6 +44,10 @@ Two-sided music streaming + artist monetization platform: artists upload AI-gene
 
 ## Gotchas
 
+- **Preview routing is controlled by `artifacts/api-server/.replit-artifact/artifact.toml`**, not just the server: the scaffold originally registered the server under `/api` only, which made Replit's preview show "couldn't reach this app" at `/` even while the server was healthy. The artifact must own the root route (fixed 2026-08-10; see `.agents/memory/preview-routing.md`).
+- Background agent sessions run in a separate container: ports opened there are never exposed on the public dev URL — only the workspace's Run button serves the preview.
+- Stopping `pnpm run dev` wrappers can orphan the node child holding port 5000 → `EADDRINUSE` on next Run. Fix: `pkill -f 'api-server/dist'`.
+
 - Multipart form booleans arrive as strings — routes use a `boolish` preprocess (plain `z.coerce.boolean()` turns `"false"` into `true`).
 - After editing `lib/db` schema, run `pnpm run typecheck:libs` (tsc --build) or api-server sees stale types; then `pnpm --filter @workspace/db run push`.
 - `mockup-sandbox` is scaffold-only (not part of the app); its vite config defaults PORT/BASE_PATH so `pnpm run build` passes.
