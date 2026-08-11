@@ -377,6 +377,44 @@ console.log("== 11. Subscription lifecycle webhooks ==");
   check("canceled user blocked from browse", (await basic.req("GET", "/api/tracks")).status === 403);
 }
 
+console.log("== 12. Rate limiting ==");
+{
+  const victim = `rl-${RUN}@test.com`;
+  const attacker = session();
+  let got429 = false;
+  let lastStatus = 0;
+  for (let i = 0; i < 12; i++) {
+    const r = await attacker.req("POST", "/api/auth/login", {
+      email: victim,
+      password: "wrong-password",
+    });
+    lastStatus = r.status;
+    if (r.status === 429) {
+      got429 = true;
+      break;
+    }
+  }
+  check("brute-force login blocked with 429", got429, `last status ${lastStatus}`);
+  check(
+    "429 keeps blocking follow-up attempts",
+    (
+      await attacker.req("POST", "/api/auth/login", {
+        email: victim,
+        password: "wrong-password",
+      })
+    ).status === 429,
+  );
+  check(
+    "other accounts unaffected by the blocked one",
+    (
+      await session().req("POST", "/api/auth/login", {
+        email: "admin@aimusic.academy",
+        password: "admin1234",
+      })
+    ).status === 200,
+  );
+}
+
 console.log("== cleanup ==");
 {
   const r = await artist.req("DELETE", `/api/posts/${exclusivePostId}`);

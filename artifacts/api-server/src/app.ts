@@ -12,6 +12,10 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+// Replit terminates TLS at a proxy; trust one hop so req.ip is the real
+// client address (rate limiting keys on it).
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,

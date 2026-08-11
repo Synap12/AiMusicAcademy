@@ -15,6 +15,7 @@ import {
 } from "../lib/auth";
 import { requireAuth } from "../middlewares/auth";
 import { logger } from "../lib/logger";
+import { rateLimit, clearRateLimit } from "../lib/rateLimit";
 
 const router: IRouter = Router();
 
@@ -25,7 +26,13 @@ const signupSchema = z.object({
   artistName: z.string().min(1).max(80),
 });
 
-router.post("/auth/signup", async (req, res, next) => {
+const signupLimiter = rateLimit("signup", {
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  message: "Too many accounts created from this connection — try again later.",
+});
+
+router.post("/auth/signup", signupLimiter, async (req, res, next) => {
   try {
     const parsed = signupSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -64,7 +71,14 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-router.post("/auth/login", async (req, res, next) => {
+const loginLimiter = rateLimit("login", {
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  keyFor: (req) => String(req.body?.email ?? "").toLowerCase(),
+  message: "Too many login attempts — wait 15 minutes and try again.",
+});
+
+router.post("/auth/login", loginLimiter, async (req, res, next) => {
   try {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -88,6 +102,7 @@ router.post("/auth/login", async (req, res, next) => {
       });
       return;
     }
+    clearRateLimit(req);
     const token = await createSession(user.id);
     res.cookie(SESSION_COOKIE, token, sessionCookieOptions);
     res.json({ user: publicUser(user) });
@@ -111,7 +126,13 @@ router.get("/auth/me", requireAuth, (req, res) => {
   res.json({ user: publicUser(req.user!) });
 });
 
-router.post("/auth/forgot-password", async (req, res, next) => {
+const forgotLimiter = rateLimit("forgot-password", {
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: "Too many reset requests — wait 15 minutes and try again.",
+});
+
+router.post("/auth/forgot-password", forgotLimiter, async (req, res, next) => {
   try {
     const email = z.string().email().safeParse(req.body?.email);
     if (!email.success) {
@@ -150,7 +171,13 @@ const resetSchema = z.object({
   password: z.string().min(8).max(200),
 });
 
-router.post("/auth/reset-password", async (req, res, next) => {
+const resetLimiter = rateLimit("reset-password", {
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: "Too many reset attempts — wait 15 minutes and try again.",
+});
+
+router.post("/auth/reset-password", resetLimiter, async (req, res, next) => {
   try {
     const parsed = resetSchema.safeParse(req.body);
     if (!parsed.success) {
