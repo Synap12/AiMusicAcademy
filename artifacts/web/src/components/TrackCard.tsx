@@ -43,18 +43,19 @@ export function DownloadButton({ track, size = 17 }: { track: Track; size?: numb
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: downloaded } = useQuery({
-    queryKey: ["offline-ids"],
-    queryFn: offlineIds,
+    queryKey: ["offline-ids", user?.id],
+    queryFn: () => offlineIds(user!.id),
+    enabled: !!user,
     staleTime: 10_000,
   });
   const isSaved = downloaded?.has(track.id) ?? false;
   const mutation = useMutation({
     mutationFn: async () => {
       if (isSaved) {
-        await removeOffline(track.id);
+        await removeOffline(user!.id, track.id);
         return "removed";
       }
-      await saveOffline(track);
+      await saveOffline(track, user!.id);
       return "saved";
     },
     onSuccess: (what) => {

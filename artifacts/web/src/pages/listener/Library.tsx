@@ -18,10 +18,12 @@ interface FollowedArtist extends MiniUser {
 
 function DownloadsTab() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const { playTrack } = usePlayer();
   const { data: stored } = useQuery({
-    queryKey: ["offline-tracks"],
-    queryFn: listOffline,
+    queryKey: ["offline-tracks", user?.id],
+    queryFn: () => listOffline(user!.id),
+    enabled: !!user,
   });
   // Object URLs are created once per fetched list so play/remove don't leak.
   const playable = useMemo(
@@ -29,7 +31,7 @@ function DownloadsTab() {
     [stored],
   );
   const remove = useMutation({
-    mutationFn: (id: number) => removeOffline(id),
+    mutationFn: (id: number) => removeOffline(user!.id, id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["offline-tracks"] });
       qc.invalidateQueries({ queryKey: ["offline-ids"] });

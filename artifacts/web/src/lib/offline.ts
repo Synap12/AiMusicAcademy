@@ -8,9 +8,12 @@ import { ApiError, type Me, type Track } from "./api";
 
 const DB_NAME = "offline-music";
 const STORE = "tracks";
+const OWNER_INDEX = "ownerId";
 
 export interface StoredTrack {
   id: number;
+  /** The user who downloaded it — records are private to that account. */
+  ownerId: number;
   trackName: string;
   artistName: string;
   genre: string;
@@ -22,11 +25,18 @@ export interface StoredTrack {
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
+    const req = indexedDB.open(DB_NAME, 2);
     req.onupgradeneeded = () => {
-      if (!req.result.objectStoreNames.contains(STORE)) {
-        req.result.createObjectStore(STORE, { keyPath: "id" });
+      // v1 keyed records by track id alone, which made downloads visible to
+      // every account on the browser. Rebuild keyed per-owner; v1 records
+      // have no owner to attribute them to, so they are dropped.
+      if (req.result.objectStoreNames.contains(STORE)) {
+        req.result.deleteObjectStore(STORE);
       }
+      const store = req.result.createObjectStore(STORE, {
+        keyPath: ["ownerId", "id"],
+      });
+      store.createIndex(OWNER_INDEX, "ownerId");
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -59,7 +69,7 @@ export function canDownload(user: Me | null, track: Track): boolean {
 }
 
 /** Download a track's audio (and cover) and store it for offline playback. */
-export async function saveOffline(track: Track): Promise<void> {
+export async function saveOffline(track: Track, ownerId: number): Promise<void> {
   const res = await fetch(`/api/tracks/${track.id}/download`, {
     credentials: "include",
   });
@@ -76,6 +86,7 @@ export async function saveOffline(track: Track): Promise<void> {
   }
   const record: StoredTrack = {
     id: track.id,
+    ownerId,
     trackName: track.trackName,
     artistName: track.artist.artistName,
     genre: track.genre,
@@ -87,17 +98,22 @@ export async function saveOffline(track: Track): Promise<void> {
   await tx("readwrite", (s) => s.put(record));
 }
 
-export function listOffline(): Promise<StoredTrack[]> {
-  return tx("readonly", (s) => s.getAll() as IDBRequest<StoredTrack[]>);
+export function listOffline(ownerId: number): Promise<StoredTrack[]> {
+  return tx(
+    "readonly",
+    (s) => s.index(OWNER_INDEX).getAll(ownerId) as IDBRequest<StoredTrack[]>,
+  );
 }
 
-export async function offlineIds(): Promise<Set<number>> {
-  const keys = await tx("readonly", (s) => s.getAllKeys());
-  return new Set(keys as number[]);
+export async function offlineIds(ownerId: number): Promise<Set<number>> {
+  const keys = await tx("readonly", (s) =>
+    s.index(OWNER_INDEX).getAllKeys(ownerId),
+  );
+  return new Set((keys as [number, number][]).map(([, trackId]) => trackId));
 }
 
-export function removeOffline(id: number): Promise<undefined> {
-  return tx("readwrite", (s) => s.delete(id));
+export function removeOffline(ownerId: number, id: number): Promise<undefined> {
+  return tx("readwrite", (s) => s.delete([ownerId, id]));
 }
 
 /**
