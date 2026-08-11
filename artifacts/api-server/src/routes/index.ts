@@ -8,6 +8,7 @@ import merchRouter from "./merch";
 import postsRouter from "./posts";
 import artistRouter from "./artist";
 import adminRouter from "./admin";
+import supportRouter from "./support";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(merchRouter);
 router.use(postsRouter);
 router.use(artistRouter);
 router.use(adminRouter);
+router.use(supportRouter);
 
 export default router;

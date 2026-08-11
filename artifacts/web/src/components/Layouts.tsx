@@ -21,6 +21,7 @@ import {
   Users,
   Shield,
   DollarSign,
+  LifeBuoy,
   Menu,
   X,
 } from "lucide-react";
@@ -146,6 +147,7 @@ export function ListenerLayout({ children }: { children: ReactNode }) {
             <NavLink href="/merch" icon={<ShoppingBag size={18} />} label="Browse Merch" />
             <NavLink href="/community" icon={<MessageSquare size={18} />} label="Community" />
             <NavLink href="/profile" icon={<User size={18} />} label="My Profile" />
+            <NavLink href="/support" icon={<LifeBuoy size={18} />} label="Support" />
             {user.userType === "ARTIST" && (
               <>
                 <div className="border-t border-line my-3" />
@@ -194,6 +196,7 @@ export function ArtistLayout({ children }: { children: ReactNode }) {
             <NavLink href="/artist/profile" icon={<User size={18} />} label="My Profile" />
             <div className="border-t border-line my-3" />
             <NavLink href="/browse" icon={<Music size={18} />} label="Browse Music" />
+            <NavLink href="/support" icon={<LifeBuoy size={18} />} label="Support" />
           </nav>
           <LogoutButton />
           <p className="text-txt3 text-[11px] px-3 mt-3">© 2025 AI Music Academy</p>
@@ -224,6 +227,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             <NavLink href="/admin/users" icon={<Users size={18} />} label="Users" />
             <NavLink href="/admin/moderation" icon={<Shield size={18} />} label="Moderation" />
             <NavLink href="/admin/payouts" icon={<DollarSign size={18} />} label="Payouts" />
+            <NavLink href="/admin/support" icon={<LifeBuoy size={18} />} label="Support" />
           </nav>
           <p className="text-txt3 text-xs px-3 mb-2 truncate">{user.email}</p>
           <LogoutButton />

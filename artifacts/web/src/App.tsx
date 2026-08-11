@@ -25,6 +25,8 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminUsers from "./pages/admin/UsersAdmin";
 import AdminModeration from "./pages/admin/Moderation";
 import AdminPayouts from "./pages/admin/Payouts";
+import AdminSupport from "./pages/admin/Support";
+import Support from "./pages/Support";
 import { ListenerLayout, ArtistLayout, AdminLayout } from "./components/Layouts";
 
 export default function App() {
@@ -56,6 +58,9 @@ export default function App() {
       </Route>
       <Route path="/profile">
         <ListenerLayout><Profile /></ListenerLayout>
+      </Route>
+      <Route path="/support">
+        <ListenerLayout><Support /></ListenerLayout>
       </Route>
       <Route path="/artists/:id">
         {(params) => (
@@ -100,6 +105,9 @@ export default function App() {
       </Route>
       <Route path="/admin/payouts">
         <AdminLayout><AdminPayouts /></AdminLayout>
+      </Route>
+      <Route path="/admin/support">
+        <AdminLayout><AdminSupport /></AdminLayout>
       </Route>
 
       <Route>
