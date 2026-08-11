@@ -1,5 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import dns from "node:dns";
+
+// The hosting sandbox advertises IPv6 but routes it poorly; Node tries IPv6
+// first and burns seconds per outbound request (enough to trip the profanity
+// filter's fail-open timeout). Prefer IPv4 for all outbound calls.
+dns.setDefaultResultOrder("ipv4first");
 
 // Load .env from the workspace root or the package dir (dev runs with
 // cwd=artifacts/api-server, deployments with cwd=repo root). Values
