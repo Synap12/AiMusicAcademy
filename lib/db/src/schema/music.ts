@@ -118,6 +118,39 @@ export const coverArtGenerationsTable = pgTable(
   (t) => [index("cover_art_generations_artist_idx").on(t.artistId, t.createdAt)],
 );
 
+export const playlistsTable = pgTable(
+  "playlists",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("playlists_user_idx").on(t.userId)],
+);
+
+export const playlistTracksTable = pgTable(
+  "playlist_tracks",
+  {
+    id: serial("id").primaryKey(),
+    playlistId: integer("playlist_id")
+      .notNull()
+      .references(() => playlistsTable.id, { onDelete: "cascade" }),
+    trackId: integer("track_id")
+      .notNull()
+      .references(() => tracksTable.id, { onDelete: "cascade" }),
+    // Append-order position; kept sparse so reordering stays cheap.
+    position: integer("position").notNull(),
+    addedAt: timestamp("added_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("playlist_tracks_unique").on(t.playlistId, t.trackId),
+    index("playlist_tracks_playlist_idx").on(t.playlistId),
+  ],
+);
+
 export const insertTrackSchema = createInsertSchema(tracksTable).omit({
   id: true,
   createdAt: true,
@@ -130,3 +163,5 @@ export type LikedTrack = typeof likedTracksTable.$inferSelect;
 export type Following = typeof followingsTable.$inferSelect;
 export type CoverArt = typeof coverArtsTable.$inferSelect;
 export type CoverArtGeneration = typeof coverArtGenerationsTable.$inferSelect;
+export type Playlist = typeof playlistsTable.$inferSelect;
+export type PlaylistTrack = typeof playlistTracksTable.$inferSelect;

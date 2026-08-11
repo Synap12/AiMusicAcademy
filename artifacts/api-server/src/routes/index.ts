@@ -9,6 +9,7 @@ import postsRouter from "./posts";
 import artistRouter from "./artist";
 import adminRouter from "./admin";
 import supportRouter from "./support";
+import playlistsRouter from "./playlists";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(postsRouter);
 router.use(artistRouter);
 router.use(adminRouter);
 router.use(supportRouter);
+router.use(playlistsRouter);
 
 export default router;

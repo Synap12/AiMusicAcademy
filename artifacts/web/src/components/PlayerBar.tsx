@@ -2,12 +2,36 @@ import { usePlayer } from "@/lib/player";
 import { formatDuration } from "@/lib/format";
 import { Cover } from "./ui";
 import { LikeButton } from "./TrackCard";
-import { Play, Pause, SkipBack, SkipForward, Volume2 } from "lucide-react";
+import {
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Volume2,
+  Shuffle,
+  Repeat,
+  Repeat1,
+} from "lucide-react";
 import { Link } from "wouter";
+import clsx from "clsx";
 
 export function PlayerBar() {
-  const { current, playing, progress, duration, volume, toggle, next, prev, seek, setVolume } =
-    usePlayer();
+  const {
+    current,
+    playing,
+    progress,
+    duration,
+    volume,
+    shuffle,
+    repeat,
+    toggle,
+    next,
+    prev,
+    seek,
+    setVolume,
+    toggleShuffle,
+    cycleRepeat,
+  } = usePlayer();
   if (!current) return null;
   return (
     <div className="fixed bottom-0 left-0 lg:left-60 right-0 z-40 bg-card border-t border-line px-4 py-2.5">
@@ -26,6 +50,14 @@ export function PlayerBar() {
         </div>
         <div className="flex-1 flex flex-col items-center gap-1">
           <div className="flex items-center gap-4">
+            <button
+              onClick={toggleShuffle}
+              className={clsx(shuffle ? "text-cyan" : "text-txt2 hover:text-txt")}
+              aria-label="Shuffle"
+              title={shuffle ? "Shuffle on" : "Shuffle off"}
+            >
+              <Shuffle size={16} />
+            </button>
             <button onClick={prev} className="text-txt2 hover:text-txt" aria-label="Previous">
               <SkipBack size={18} />
             </button>
@@ -38,6 +70,16 @@ export function PlayerBar() {
             </button>
             <button onClick={next} className="text-txt2 hover:text-txt" aria-label="Next">
               <SkipForward size={18} />
+            </button>
+            <button
+              onClick={cycleRepeat}
+              className={clsx(repeat !== "off" ? "text-cyan" : "text-txt2 hover:text-txt")}
+              aria-label="Repeat"
+              title={
+                repeat === "off" ? "Repeat off" : repeat === "all" ? "Repeat all" : "Repeat one"
+              }
+            >
+              {repeat === "one" ? <Repeat1 size={16} /> : <Repeat size={16} />}
             </button>
           </div>
           <div className="flex items-center gap-2 w-full max-w-xl">

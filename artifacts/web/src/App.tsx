@@ -10,6 +10,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsConditions from "./pages/TermsConditions";
 import Browse from "./pages/listener/Browse";
 import Library from "./pages/listener/Library";
+import PlaylistDetail from "./pages/listener/PlaylistDetail";
 import MerchBrowse from "./pages/listener/MerchBrowse";
 import Community from "./pages/listener/Community";
 import Profile from "./pages/listener/Profile";
@@ -49,6 +50,9 @@ export default function App() {
       </Route>
       <Route path="/library">
         <ListenerLayout><Library /></ListenerLayout>
+      </Route>
+      <Route path="/playlists/:id">
+        <ListenerLayout><PlaylistDetail /></ListenerLayout>
       </Route>
       <Route path="/merch">
         <ListenerLayout><MerchBrowse /></ListenerLayout>

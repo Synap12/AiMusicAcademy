@@ -39,7 +39,7 @@ export async function checkProfanity(text: string): Promise<string | null> {
       `https://www.purgomalum.com/service/containsprofanity?text=${encodeURIComponent(
         text.slice(0, 2000),
       )}`,
-      2500,
+      4000,
     );
     if (body.trim() === "true") return "purgomalum";
   } catch (err) {

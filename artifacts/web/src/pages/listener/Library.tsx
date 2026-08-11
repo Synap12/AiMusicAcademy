@@ -1,14 +1,14 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { apiGet, apiSend, type Track, type MiniUser } from "@/lib/api";
+import { apiGet, apiSend, type Track, type MiniUser, type Playlist } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { usePlayer } from "@/lib/player";
 import { listOffline, removeOffline, toPlayableTrack } from "@/lib/offline";
 import { DownloadButton } from "@/components/TrackCard";
 import { Avatar, Cover, EmptyState, Spinner, StatCard } from "@/components/ui";
 import { formatDuration, listenTime } from "@/lib/format";
-import { Heart, Users, Play, Download, Trash2, WifiOff } from "lucide-react";
+import { Heart, Users, Play, Download, Trash2, WifiOff, ListMusic, Plus } from "lucide-react";
 import clsx from "clsx";
 
 interface FollowedArtist extends MiniUser {
@@ -90,8 +90,96 @@ function DownloadsTab() {
   );
 }
 
+function PlaylistsTab() {
+  const qc = useQueryClient();
+  const [name, setName] = useState("");
+  const { data } = useQuery({
+    queryKey: ["playlists"],
+    queryFn: () => apiGet("/playlists"),
+  });
+  const playlists: Playlist[] = data?.playlists ?? [];
+  const create = useMutation({
+    mutationFn: () => apiSend("POST", "/playlists", { name: name.trim() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["playlists"] });
+      setName("");
+    },
+  });
+
+  return (
+    <>
+      <form
+        className="flex items-center gap-2 mb-5 max-w-md"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (name.trim() && !create.isPending) create.mutate();
+        }}
+      >
+        <input
+          className="input flex-1"
+          placeholder="New playlist name…"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={80}
+        />
+        <button
+          type="submit"
+          disabled={!name.trim() || create.isPending}
+          className="btn btn-primary inline-flex items-center gap-1.5"
+        >
+          <Plus size={15} /> Create
+        </button>
+      </form>
+      {playlists.length === 0 ? (
+        <EmptyState
+          icon={<ListMusic size={40} />}
+          title="No playlists yet"
+          subtitle="Create one above, or use the + icon on any track."
+          action={<Link href="/browse" className="btn btn-secondary">Browse Music</Link>}
+        />
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          {playlists.map((p) => (
+            <Link
+              key={p.id}
+              href={`/playlists/${p.id}`}
+              className="card !p-4 group hover:border-cyan/50 transition-colors block"
+            >
+              <div className="aspect-square rounded-lg overflow-hidden mb-3 grid grid-cols-2 grid-rows-2 gap-0.5 bg-white/[0.04]">
+                {p.covers.length > 0 ? (
+                  [0, 1, 2, 3].map((i) => (
+                    <div key={i} className="w-full h-full overflow-hidden">
+                      {p.covers[i % p.covers.length] ? (
+                        <img
+                          src={p.covers[i % p.covers.length]}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      ) : null}
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-2 row-span-2 flex items-center justify-center text-txt3">
+                    <ListMusic size={36} />
+                  </div>
+                )}
+              </div>
+              <p className="font-semibold truncate group-hover:text-cyan transition-colors">
+                {p.name}
+              </p>
+              <p className="text-txt3 text-sm">
+                {p.trackCount} {p.trackCount === 1 ? "track" : "tracks"}
+              </p>
+            </Link>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function Library() {
-  const [tab, setTab] = useState<"liked" | "following" | "downloads">("liked");
+  const [tab, setTab] = useState<"liked" | "playlists" | "following" | "downloads">("liked");
   const qc = useQueryClient();
   const { user } = useAuth();
   const { playTrack } = usePlayer();
@@ -135,6 +223,7 @@ export default function Library() {
       <div className="flex gap-2 mb-6 flex-wrap">
         {[
           { id: "liked" as const, label: "Liked Songs" },
+          { id: "playlists" as const, label: "Playlists" },
           { id: "following" as const, label: "Following" },
           ...(showDownloads ? [{ id: "downloads" as const, label: "Downloads" }] : []),
         ].map((t) => (
@@ -196,6 +285,8 @@ export default function Library() {
             ))}
           </div>
         ))}
+
+      {tab === "playlists" && <PlaylistsTab />}
 
       {tab === "downloads" && showDownloads && <DownloadsTab />}
 

@@ -10,6 +10,8 @@ import {
 import { apiSend, type Track } from "./api";
 import { useQueryClient } from "@tanstack/react-query";
 
+export type RepeatMode = "off" | "all" | "one";
+
 interface PlayerState {
   current: Track | null;
   queue: Track[];
@@ -17,12 +19,16 @@ interface PlayerState {
   progress: number;
   duration: number;
   volume: number;
+  shuffle: boolean;
+  repeat: RepeatMode;
   playTrack: (track: Track, queue?: Track[]) => void;
   toggle: () => void;
   next: () => void;
   prev: () => void;
   seek: (seconds: number) => void;
   setVolume: (v: number) => void;
+  toggleShuffle: () => void;
+  cycleRepeat: () => void;
 }
 
 const PlayerContext = createContext<PlayerState | null>(null);
@@ -35,6 +41,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(0.9);
+  const [shuffle, setShuffle] = useState(false);
+  const [repeat, setRepeat] = useState<RepeatMode>("off");
   const qc = useQueryClient();
   // Play-counting: a play is reported once per track-load, and only after the
   // listener has heard 50% of it. The server then applies the daily cap.
@@ -101,22 +109,39 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const step = useCallback(
     (dir: 1 | -1) => {
       if (!current || queue.length === 0) return;
+      if (shuffle && queue.length > 1) {
+        let idx = Math.floor(Math.random() * queue.length);
+        if (queue[idx].id === current.id) idx = (idx + 1) % queue.length;
+        playTrack(queue[idx]);
+        return;
+      }
       const idx = queue.findIndex((t) => t.id === current.id);
       const nextIdx = (idx + dir + queue.length) % queue.length;
       const track = queue[nextIdx];
       if (track) playTrack(track);
     },
-    [current, queue, playTrack],
+    [current, queue, shuffle, playTrack],
   );
 
-  // Auto-advance when a track finishes.
+  // Auto-advance when a track finishes, honoring repeat mode.
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const onEnded = () => step(1);
+    const onEnded = () => {
+      if (repeat === "one") {
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+        setPlaying(true);
+        return;
+      }
+      const lastIdx = queue.findIndex((t) => t.id === current?.id);
+      const atEnd = lastIdx === queue.length - 1;
+      if (repeat === "off" && atEnd && !shuffle) return;
+      step(1);
+    };
     audio.addEventListener("ended", onEnded);
     return () => audio.removeEventListener("ended", onEnded);
-  }, [step]);
+  }, [step, repeat, shuffle, queue, current]);
 
   const seek = useCallback((seconds: number) => {
     const audio = audioRef.current;
@@ -138,12 +163,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         progress,
         duration,
         volume,
+        shuffle,
+        repeat,
         playTrack,
         toggle,
         next: () => step(1),
         prev: () => step(-1),
         seek,
         setVolume,
+        toggleShuffle: () => setShuffle((s) => !s),
+        cycleRepeat: () =>
+          setRepeat((r) => (r === "off" ? "all" : r === "all" ? "one" : "off")),
       }}
     >
       {children}

@@ -56,6 +56,8 @@ Built as a real full-stack web app (React + Express + PostgreSQL), replacing the
 - [x] **Offline downloads (Listener Pro)**: Pro-gated download endpoint, tracks stored in IndexedDB (audio + cover), Downloads tab in My Library, service worker caches the app shell so downloaded music plays fully offline
 - [x] My Library: stats (liked count, following count, listen time), Liked Songs tab, Following tab, empty states
 - [x] Follow / unfollow artists
+- [x] **Playlists**: create/rename/delete, add tracks from any track card (with new-playlist shortcut), Playlists tab in My Library with cover mosaics, detail page with Play All / Shuffle / remove, private per account
+- [x] **Player shuffle & repeat**: shuffle toggle and off/all/one repeat modes in the player bar; auto-advance honors both
 - [x] Public artist profile: cover, bio, social links, Play All, track list, merch grid, recent posts, follower count
 
 ## 5. Merch

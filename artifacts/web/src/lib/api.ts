@@ -94,6 +94,15 @@ export interface Track {
   likedByMe?: boolean;
 }
 
+export interface Playlist {
+  id: number;
+  userId: number;
+  name: string;
+  createdAt: string;
+  trackCount: number;
+  covers: string[];
+}
+
 export interface MerchProduct {
   id: number;
   productName: string;

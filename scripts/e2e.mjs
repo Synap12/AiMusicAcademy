@@ -271,7 +271,53 @@ let exclusivePostId;
   check("profanity blocked", r.status === 400, String(r.status));
 }
 
-console.log("== 10. Subscription lifecycle webhooks ==");
+console.log("== 10. Playlists ==");
+{
+  let r = await pro.req("POST", "/api/playlists", { name: `Road Trip ${RUN}` });
+  check("create playlist", r.status === 201 && r.json?.playlist?.name === `Road Trip ${RUN}`);
+  const plId = r.json?.playlist?.id;
+
+  const browse = await pro.req("GET", "/api/tracks");
+  const [t1, t2] = browse.json?.tracks ?? [];
+  r = await pro.req("POST", `/api/playlists/${plId}/tracks`, { trackId: t1.id });
+  check("add first track", r.status === 201);
+  r = await pro.req("POST", `/api/playlists/${plId}/tracks`, { trackId: t2.id });
+  check("add second track", r.status === 201);
+  await pro.req("POST", `/api/playlists/${plId}/tracks`, { trackId: t1.id });
+
+  r = await pro.req("GET", `/api/playlists/${plId}`);
+  const got = r.json?.tracks ?? [];
+  check(
+    "detail keeps order, ignores duplicate add",
+    got.length === 2 && got[0].id === t1.id && got[1].id === t2.id,
+    JSON.stringify(got.map((t) => t.id)),
+  );
+  r = await pro.req("GET", "/api/playlists");
+  const mine = (r.json?.playlists ?? []).find((p) => p.id === plId);
+  check("list shows track count", mine?.trackCount === 2, JSON.stringify(mine));
+
+  check(
+    "another user cannot see my playlist",
+    (await artist.req("GET", `/api/playlists/${plId}`)).status === 404,
+  );
+  check(
+    "another user cannot modify my playlist",
+    (await artist.req("POST", `/api/playlists/${plId}/tracks`, { trackId: t1.id })).status === 404,
+  );
+
+  r = await pro.req("PATCH", `/api/playlists/${plId}`, { name: `Renamed ${RUN}` });
+  check("rename playlist", r.status === 200 && r.json?.playlist?.name === `Renamed ${RUN}`);
+  r = await pro.req("DELETE", `/api/playlists/${plId}/tracks/${t1.id}`);
+  check("remove track", r.status === 200);
+  r = await pro.req("GET", `/api/playlists/${plId}`);
+  check("track removed from detail", (r.json?.tracks ?? []).length === 1);
+  r = await pro.req("DELETE", `/api/playlists/${plId}`);
+  check("delete playlist", r.status === 200);
+  r = await pro.req("GET", `/api/playlists/${plId}`);
+  check("deleted playlist is gone", r.status === 404);
+}
+
+console.log("== 11. Subscription lifecycle webhooks ==");
 {
   const { body, header } = signedWebhook({
     type: "customer.subscription.deleted",
