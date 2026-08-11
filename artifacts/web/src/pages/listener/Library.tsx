@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { apiGet, apiSend, type Track, type MiniUser, type Playlist } from "@/lib/api";
+import { apiGet, apiSend, ApiError, type Track, type MiniUser, type Playlist } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useToast } from "@/lib/toast";
 import { usePlayer } from "@/lib/player";
 import { listOffline, removeOffline, toPlayableTrack } from "@/lib/offline";
 import { DownloadButton } from "@/components/TrackCard";
@@ -92,6 +93,7 @@ function DownloadsTab() {
 
 function PlaylistsTab() {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const [name, setName] = useState("");
   const { data } = useQuery({
     queryKey: ["playlists"],
@@ -104,6 +106,8 @@ function PlaylistsTab() {
       qc.invalidateQueries({ queryKey: ["playlists"] });
       setName("");
     },
+    onError: (err) =>
+      toast(err instanceof ApiError ? err.message : "Could not create playlist", "error"),
   });
 
   return (

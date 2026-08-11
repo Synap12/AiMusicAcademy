@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useParams } from "wouter";
-import { apiGet, apiSend, type Playlist, type Track } from "@/lib/api";
+import { apiGet, apiSend, ApiError, type Playlist, type Track } from "@/lib/api";
 import { usePlayer } from "@/lib/player";
 import { useToast } from "@/lib/toast";
 import { Cover, EmptyState, Spinner } from "@/components/ui";
@@ -13,9 +13,11 @@ export default function PlaylistDetail() {
   const [, navigate] = useLocation();
   const qc = useQueryClient();
   const { toast } = useToast();
-  const { playTrack, toggleShuffle, shuffle } = usePlayer();
+  const { playTrack } = usePlayer();
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState("");
+  const oops = (fallback: string) => (err: unknown) =>
+    toast(err instanceof ApiError ? err.message : fallback, "error");
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["playlist", id],
@@ -29,6 +31,7 @@ export default function PlaylistDetail() {
       qc.invalidateQueries({ queryKey: ["playlists"] });
       setRenaming(false);
     },
+    onError: oops("Could not rename playlist"),
   });
   const removeTrack = useMutation({
     mutationFn: (trackId: number) => apiSend("DELETE", `/playlists/${id}/tracks/${trackId}`),
@@ -36,6 +39,7 @@ export default function PlaylistDetail() {
       qc.invalidateQueries({ queryKey: ["playlist", id] });
       qc.invalidateQueries({ queryKey: ["playlists"] });
     },
+    onError: oops("Could not remove track"),
   });
   const removePlaylist = useMutation({
     mutationFn: () => apiSend("DELETE", `/playlists/${id}`),
@@ -44,6 +48,7 @@ export default function PlaylistDetail() {
       toast("Playlist deleted");
       navigate("/library");
     },
+    onError: oops("Could not delete playlist"),
   });
 
   if (isLoading) return <Spinner center />;
@@ -109,7 +114,9 @@ export default function PlaylistDetail() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => tracks.length > 0 && playTrack(tracks[0], tracks)}
+            onClick={() =>
+              tracks.length > 0 && playTrack(tracks[0], tracks, { shuffle: false })
+            }
             disabled={tracks.length === 0}
             className="btn btn-primary inline-flex items-center gap-2"
           >
@@ -117,9 +124,12 @@ export default function PlaylistDetail() {
           </button>
           <button
             onClick={() => {
-              if (!shuffle) toggleShuffle();
               if (tracks.length > 0) {
-                playTrack(tracks[Math.floor(Math.random() * tracks.length)], tracks);
+                playTrack(
+                  tracks[Math.floor(Math.random() * tracks.length)],
+                  tracks,
+                  { shuffle: true },
+                );
               }
             }}
             disabled={tracks.length === 0}

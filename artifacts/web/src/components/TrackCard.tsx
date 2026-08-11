@@ -117,13 +117,16 @@ export function AddToPlaylistButton({ track, size = 17 }: { track: Track; size?:
   }, [open]);
 
   const add = useMutation({
-    mutationFn: async (playlistId: number) => {
-      await apiSend("POST", `/playlists/${playlistId}/tracks`, { trackId: track.id });
-    },
-    onSuccess: () => {
+    mutationFn: (playlistId: number) =>
+      apiSend("POST", `/playlists/${playlistId}/tracks`, { trackId: track.id }),
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["playlists"] });
       qc.invalidateQueries({ queryKey: ["playlist"] });
-      toast(`"${track.trackName}" added to playlist`);
+      toast(
+        res.added
+          ? `"${track.trackName}" added to playlist`
+          : "Already in that playlist",
+      );
       setOpen(false);
     },
     onError: (err) =>

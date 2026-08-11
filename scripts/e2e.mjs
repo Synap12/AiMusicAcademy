@@ -278,12 +278,50 @@ console.log("== 10. Playlists ==");
   const plId = r.json?.playlist?.id;
 
   const browse = await pro.req("GET", "/api/tracks");
-  const [t1, t2] = browse.json?.tracks ?? [];
+  const all = browse.json?.tracks ?? [];
+  if (all.length < 2) {
+    check("playlist tests need 2+ seeded published tracks", false, `only ${all.length} found`);
+  } else {
+  // Reserve one of the logged-in artist's tracks for the unpublish test;
+  // the playlist under test uses other tracks.
+  const artistId = (await artist.req("GET", "/api/auth/me")).json?.user?.id;
+  const novaTrack = all.find((t) => t.artist.id === artistId);
+  const pool = all.filter((t) => t.id !== novaTrack?.id);
+  const [t1, t2] = pool.length >= 2 ? pool : all;
   r = await pro.req("POST", `/api/playlists/${plId}/tracks`, { trackId: t1.id });
-  check("add first track", r.status === 201);
+  check("add first track", r.status === 201 && r.json?.added === true);
   r = await pro.req("POST", `/api/playlists/${plId}/tracks`, { trackId: t2.id });
   check("add second track", r.status === 201);
-  await pro.req("POST", `/api/playlists/${plId}/tracks`, { trackId: t1.id });
+  r = await pro.req("POST", `/api/playlists/${plId}/tracks`, { trackId: t1.id });
+  check(
+    "duplicate add reports added:false",
+    r.status === 200 && r.json?.added === false,
+    JSON.stringify(r.json),
+  );
+  check(
+    "non-numeric playlist id is 404, not 500",
+    (await pro.req("GET", "/api/playlists/abc")).status === 404,
+  );
+
+  // Unpublishing a track must hide it from playlists (and restore on republish).
+  if (novaTrack && ![t1.id, t2.id].includes(novaTrack.id)) {
+    await pro.req("POST", `/api/playlists/${plId}/tracks`, { trackId: novaTrack.id });
+    await artist.req("PATCH", `/api/tracks/${novaTrack.id}`, { isPublished: false });
+    const detail = await pro.req("GET", `/api/playlists/${plId}`);
+    check(
+      "unpublished track hidden from playlist",
+      !(detail.json?.tracks ?? []).some((t) => t.id === novaTrack.id),
+    );
+    await artist.req("PATCH", `/api/tracks/${novaTrack.id}`, { isPublished: true });
+    const detail2 = await pro.req("GET", `/api/playlists/${plId}`);
+    check(
+      "republished track reappears in playlist",
+      (detail2.json?.tracks ?? []).some((t) => t.id === novaTrack.id),
+    );
+    await pro.req("DELETE", `/api/playlists/${plId}/tracks/${novaTrack.id}`);
+  } else {
+    console.log("  (skipping unpublish test — no spare Nova track)");
+  }
 
   r = await pro.req("GET", `/api/playlists/${plId}`);
   const got = r.json?.tracks ?? [];
@@ -315,6 +353,7 @@ console.log("== 10. Playlists ==");
   check("delete playlist", r.status === 200);
   r = await pro.req("GET", `/api/playlists/${plId}`);
   check("deleted playlist is gone", r.status === 404);
+  }
 }
 
 console.log("== 11. Subscription lifecycle webhooks ==");

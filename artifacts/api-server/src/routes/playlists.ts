@@ -6,7 +6,7 @@ import {
   tracksTable,
   usersTable,
 } from "@workspace/db";
-import { and, asc, desc, eq, count, max, sql } from "drizzle-orm";
+import { and, asc, desc, eq, count, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import { requireOnboarded } from "../middlewares/auth";
 import { miniUser } from "../lib/auth";
@@ -18,6 +18,7 @@ const nameSchema = z.object({ name: z.string().min(1).max(80) });
 
 /** Load a playlist only if it belongs to the requester. */
 async function ownPlaylist(id: number, userId: number) {
+  if (!Number.isInteger(id)) return null;
   const [playlist] = await db
     .select()
     .from(playlistsTable)
@@ -29,15 +30,24 @@ async function ownPlaylist(id: number, userId: number) {
 /** My playlists, newest first, with track counts and up to 4 cover thumbs. */
 router.get("/playlists", requireOnboarded, async (req, res, next) => {
   try {
+    // Unpublished/taken-down tracks stay in the join tables (they reappear if
+    // republished) but are never counted, shown, or served.
     const playlists = await db
       .select({
         playlist: playlistsTable,
-        trackCount: count(playlistTracksTable.id),
+        trackCount: count(tracksTable.id),
       })
       .from(playlistsTable)
       .leftJoin(
         playlistTracksTable,
         eq(playlistTracksTable.playlistId, playlistsTable.id),
+      )
+      .leftJoin(
+        tracksTable,
+        and(
+          eq(playlistTracksTable.trackId, tracksTable.id),
+          eq(tracksTable.isPublished, true),
+        ),
       )
       .where(eq(playlistsTable.userId, req.user!.id))
       .groupBy(playlistsTable.id)
@@ -53,7 +63,12 @@ router.get("/playlists", requireOnboarded, async (req, res, next) => {
         })
         .from(playlistTracksTable)
         .innerJoin(tracksTable, eq(playlistTracksTable.trackId, tracksTable.id))
-        .where(sql`${playlistTracksTable.playlistId} in ${ids}`)
+        .where(
+          and(
+            sql`${playlistTracksTable.playlistId} in ${ids}`,
+            eq(tracksTable.isPublished, true),
+          ),
+        )
         .orderBy(asc(playlistTracksTable.position));
       for (const r of rows) {
         const list = covers.get(r.playlistId) ?? [];
@@ -103,7 +118,12 @@ router.get("/playlists/:id", requireOnboarded, async (req, res, next) => {
       .from(playlistTracksTable)
       .innerJoin(tracksTable, eq(playlistTracksTable.trackId, tracksTable.id))
       .innerJoin(usersTable, eq(tracksTable.artistId, usersTable.id))
-      .where(eq(playlistTracksTable.playlistId, playlist.id))
+      .where(
+        and(
+          eq(playlistTracksTable.playlistId, playlist.id),
+          eq(tracksTable.isPublished, true),
+        ),
+      )
       .orderBy(asc(playlistTracksTable.position));
     res.json({
       playlist,
@@ -175,19 +195,20 @@ router.post("/playlists/:id/tracks", requireOnboarded, async (req, res, next) =>
       res.status(404).json({ error: "Track not found" });
       return;
     }
-    const [{ maxPos }] = await db
-      .select({ maxPos: max(playlistTracksTable.position) })
-      .from(playlistTracksTable)
-      .where(eq(playlistTracksTable.playlistId, playlist.id));
-    await db
-      .insert(playlistTracksTable)
-      .values({
-        playlistId: playlist.id,
-        trackId: track.id,
-        position: (maxPos ?? 0) + 1,
-      })
-      .onConflictDoNothing();
-    res.status(201).json({ ok: true });
+    // Single statement so concurrent adds can't compute the same position;
+    // RETURNING tells us whether the row was new or a duplicate no-op.
+    const result = await db.execute(sql`
+      insert into playlist_tracks (playlist_id, track_id, position)
+      values (
+        ${playlist.id},
+        ${track.id},
+        coalesce((select max(position) from playlist_tracks where playlist_id = ${playlist.id}), 0) + 1
+      )
+      on conflict do nothing
+      returning id
+    `);
+    const added = (result.rows ?? []).length > 0;
+    res.status(added ? 201 : 200).json({ ok: true, added });
   } catch (err) {
     next(err);
   }
@@ -199,7 +220,8 @@ router.delete(
   async (req, res, next) => {
     try {
       const playlist = await ownPlaylist(Number(req.params.id), req.user!.id);
-      if (!playlist) {
+      const trackId = Number(req.params.trackId);
+      if (!playlist || !Number.isInteger(trackId)) {
         res.status(404).json({ error: "Playlist not found" });
         return;
       }
@@ -208,7 +230,7 @@ router.delete(
         .where(
           and(
             eq(playlistTracksTable.playlistId, playlist.id),
-            eq(playlistTracksTable.trackId, Number(req.params.trackId)),
+            eq(playlistTracksTable.trackId, trackId),
           ),
         );
       res.json({ ok: true });
