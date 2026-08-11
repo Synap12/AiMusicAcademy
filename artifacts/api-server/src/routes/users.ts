@@ -12,6 +12,7 @@ import { and, eq, desc, count } from "drizzle-orm";
 import { requireAuth, requireOnboarded } from "../middlewares/auth";
 import { hashPassword, verifyPassword, publicUser, miniUser } from "../lib/auth";
 import { imageUpload, uploadUrl } from "../lib/uploads";
+import { withAudioForUser } from "../lib/audio";
 
 const router: IRouter = Router();
 
@@ -167,9 +168,25 @@ router.get("/users/:id", requireOnboarded, async (req, res, next) => {
         socialLinks: profile.socialLinks,
         createdAt: profile.createdAt,
       },
-      tracks: tracks.map((t) => ({ ...t, artist: miniUser(profile) })),
+      tracks: tracks.map((t) => ({
+        ...withAudioForUser(t, req.user!),
+        artist: miniUser(profile),
+      })),
       merch: merch.map((m) => ({ ...m, artist: miniUser(profile) })),
-      posts,
+      posts: posts.map((p) => {
+        const locked =
+          p.isExclusive &&
+          p.authorId !== req.user!.id &&
+          !req.user!.isAdmin &&
+          req.user!.userType !== "ARTIST" &&
+          req.user!.subscriptionPlan !== "listener_pro";
+        return {
+          ...p,
+          content: locked ? "" : p.content,
+          image: locked ? null : p.image,
+          locked,
+        };
+      }),
       followerCount: followers?.n ?? 0,
       isFollowing: (following?.n ?? 0) > 0,
     });

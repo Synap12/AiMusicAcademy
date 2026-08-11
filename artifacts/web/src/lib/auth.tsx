@@ -14,6 +14,8 @@ const AuthContext = createContext<AuthState>({
   refresh: async () => {},
 });
 
+const ME_CACHE_KEY = "me-cache";
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
@@ -21,8 +23,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: async () => {
       try {
         const res = await apiGet("/auth/me");
-        return res.user as Me;
-      } catch {
+        const user = res.user as Me;
+        localStorage.setItem(ME_CACHE_KEY, JSON.stringify(user));
+        return user;
+      } catch (err) {
+        // A network failure (offline) falls back to the last known session so
+        // downloaded music stays reachable; a real 401 clears it.
+        if (err instanceof TypeError) {
+          const cached = localStorage.getItem(ME_CACHE_KEY);
+          if (cached) return JSON.parse(cached) as Me;
+        } else {
+          localStorage.removeItem(ME_CACHE_KEY);
+        }
         return null;
       }
     },

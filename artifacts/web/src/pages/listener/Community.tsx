@@ -18,6 +18,8 @@ import {
   Play,
   Send,
   MessageSquare,
+  Lock,
+  Sparkles,
 } from "lucide-react";
 
 function Composer() {
@@ -27,7 +29,9 @@ function Composer() {
   const [content, setContent] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [attachTrack, setAttachTrack] = useState<Track | null>(null);
+  const [exclusive, setExclusive] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const isArtist = user?.userType === "ARTIST";
   const { data: trackData } = useQuery({
     queryKey: ["tracks", "picker"],
     queryFn: () => apiGet("/tracks"),
@@ -40,12 +44,14 @@ function Composer() {
       form.set("content", content);
       if (image) form.set("image", image);
       if (attachTrack) form.set("trackId", String(attachTrack.id));
+      if (exclusive) form.set("isExclusive", "true");
       return apiForm("POST", "/posts", form);
     },
     onSuccess: () => {
       setContent("");
       setImage(null);
       setAttachTrack(null);
+      setExclusive(false);
       qc.invalidateQueries({ queryKey: ["posts"] });
       toast("Posted to the community");
     },
@@ -99,6 +105,15 @@ function Composer() {
           <button className="btn btn-ghost btn-sm" onClick={() => setPickerOpen(true)}>
             <Music size={15} /> Track
           </button>
+          {isArtist && (
+            <button
+              className={`btn btn-sm ${exclusive ? "btn-primary" : "btn-ghost"}`}
+              onClick={() => setExclusive(!exclusive)}
+              title="Visible in full only to Pro subscribers"
+            >
+              <Lock size={15} /> Exclusive
+            </button>
+          )}
         </div>
         <button
           className="btn btn-primary btn-sm"
@@ -314,9 +329,33 @@ function PostCard({ post }: { post: Post }) {
         </div>
       </div>
 
-      <p className="mt-3 whitespace-pre-wrap break-words">{post.content}</p>
-      {post.image && (
-        <img src={post.image} alt="" className="mt-3 rounded-xl max-h-96 object-cover" />
+      {post.locked ? (
+        <div className="mt-3 rounded-xl border border-purple/30 bg-purple/5 px-5 py-6 text-center">
+          <Lock size={22} className="mx-auto text-purple mb-2" />
+          <p className="font-semibold">Exclusive content for Pro subscribers</p>
+          <p className="text-txt3 text-sm mt-1 mb-3">
+            Upgrade to Listener Pro to unlock exclusive posts from{" "}
+            {post.author.artistName}.
+          </p>
+          <Link href="/profile" className="btn btn-primary btn-sm inline-flex">
+            <Sparkles size={14} /> Upgrade to Pro
+          </Link>
+        </div>
+      ) : (
+        <>
+          {post.isExclusive && (
+            <span
+              className="badge mt-3 inline-flex items-center gap-1"
+              style={{ background: "rgba(181,55,255,0.12)", color: "#B537FF" }}
+            >
+              <Lock size={11} /> Exclusive
+            </span>
+          )}
+          <p className="mt-3 whitespace-pre-wrap break-words">{post.content}</p>
+          {post.image && (
+            <img src={post.image} alt="" className="mt-3 rounded-xl max-h-96 object-cover" />
+          )}
+        </>
       )}
       {post.track && (
         <div className="mt-3 flex items-center gap-3 bg-bg border border-line rounded-xl p-3">
@@ -335,24 +374,26 @@ function PostCard({ post }: { post: Post }) {
         </div>
       )}
 
-      <div className="flex items-center gap-5 mt-4 text-sm">
-        <button
-          onClick={() => like.mutate()}
-          className={`flex items-center gap-1.5 ${post.likedByMe ? "text-red" : "text-txt2 hover:text-red"}`}
-        >
-          <Heart size={17} fill={post.likedByMe ? "currentColor" : "none"} />
-          {post.likeCount}
-        </button>
-        <button
-          onClick={() => setShowComments(!showComments)}
-          className="flex items-center gap-1.5 text-txt2 hover:text-cyan"
-        >
-          <MessageCircle size={17} />
-          {post.commentCount}
-        </button>
-      </div>
+      {!post.locked && (
+        <div className="flex items-center gap-5 mt-4 text-sm">
+          <button
+            onClick={() => like.mutate()}
+            className={`flex items-center gap-1.5 ${post.likedByMe ? "text-red" : "text-txt2 hover:text-red"}`}
+          >
+            <Heart size={17} fill={post.likedByMe ? "currentColor" : "none"} />
+            {post.likeCount}
+          </button>
+          <button
+            onClick={() => setShowComments(!showComments)}
+            className="flex items-center gap-1.5 text-txt2 hover:text-cyan"
+          >
+            <MessageCircle size={17} />
+            {post.commentCount}
+          </button>
+        </div>
+      )}
 
-      {showComments && <Comments post={post} />}
+      {showComments && !post.locked && <Comments post={post} />}
 
       <Modal open={reportOpen} onClose={() => setReportOpen(false)} title="Report this post">
         <p className="text-txt2 text-sm mb-3">

@@ -13,6 +13,22 @@ const queryClient = new QueryClient({
   },
 });
 
+// Offline support: the service worker caches the app shell so downloaded
+// music in My Library stays playable without a connection.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+  // When a new service worker takes control (a fresh deploy), reload once so
+  // the page runs the latest app instead of a stale cached shell.
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>

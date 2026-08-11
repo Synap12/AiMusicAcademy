@@ -69,8 +69,9 @@ export default function ArtistCoverArt() {
   });
 
   const gallery: Art[] = data?.gallery ?? [];
-  const usage: { used: number; limit: number } = data?.usage ?? { used: 0, limit: 0 };
-  const atLimit = data !== undefined && usage.used >= usage.limit;
+  // limit === null means unlimited (admin).
+  const usage: { used: number; limit: number | null } = data?.usage ?? { used: 0, limit: 0 };
+  const atLimit = data !== undefined && usage.limit !== null && usage.used >= usage.limit;
 
   return (
     <div>
@@ -85,7 +86,7 @@ export default function ArtistCoverArt() {
         <div className="card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-lg">Generator</h2>
-            {data && (
+            {data && usage.limit !== null && (
               <span className={clsx("text-sm font-semibold", atLimit ? "text-red" : "text-txt2")}>
                 {usage.used} / {usage.limit} this month
               </span>

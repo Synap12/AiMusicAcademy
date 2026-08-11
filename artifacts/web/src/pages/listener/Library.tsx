@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { apiGet, apiSend, type Track, type MiniUser } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { usePlayer } from "@/lib/player";
+import { listOffline, removeOffline, toPlayableTrack } from "@/lib/offline";
+import { DownloadButton } from "@/components/TrackCard";
 import { Avatar, Cover, EmptyState, Spinner, StatCard } from "@/components/ui";
 import { formatDuration, listenTime } from "@/lib/format";
-import { Heart, Users, Play } from "lucide-react";
+import { Heart, Users, Play, Download, Trash2, WifiOff } from "lucide-react";
 import clsx from "clsx";
 
 interface FollowedArtist extends MiniUser {
@@ -13,14 +16,93 @@ interface FollowedArtist extends MiniUser {
   followedDate: string;
 }
 
-export default function Library() {
-  const [tab, setTab] = useState<"liked" | "following">("liked");
+function DownloadsTab() {
   const qc = useQueryClient();
+  const { playTrack } = usePlayer();
+  const { data: stored } = useQuery({
+    queryKey: ["offline-tracks"],
+    queryFn: listOffline,
+  });
+  // Object URLs are created once per fetched list so play/remove don't leak.
+  const playable = useMemo(
+    () => (stored ?? []).map((s) => ({ stored: s, track: toPlayableTrack(s) })),
+    [stored],
+  );
+  const remove = useMutation({
+    mutationFn: (id: number) => removeOffline(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["offline-tracks"] });
+      qc.invalidateQueries({ queryKey: ["offline-ids"] });
+    },
+  });
+
+  if (playable.length === 0) {
+    return (
+      <EmptyState
+        icon={<Download size={40} />}
+        title="No downloads yet"
+        subtitle="Tap the download icon on any track to save it for offline listening."
+        action={<Link href="/browse" className="btn btn-secondary">Browse Music</Link>}
+      />
+    );
+  }
+  return (
+    <>
+      <p className="text-txt3 text-sm mb-4 flex items-center gap-2">
+        <WifiOff size={15} />
+        These tracks are stored on this device and play even without internet.
+      </p>
+      <div className="card !p-0 divide-y divide-line">
+        {playable.map(({ stored: s, track: t }) => (
+          <div key={t.id} className="flex items-center gap-4 px-5 py-3 hover:bg-white/[0.03]">
+            <button
+              onClick={() =>
+                playTrack(t, playable.map((p) => p.track))
+              }
+              className="gradient-bg rounded-full w-9 h-9 flex items-center justify-center text-white shrink-0"
+              aria-label="Play"
+            >
+              <Play size={15} className="ml-0.5" />
+            </button>
+            <Cover src={t.coverArt} name={t.trackName} size={44} />
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold truncate">{t.trackName}</p>
+              <p className="text-txt2 text-sm">{t.artist.artistName}</p>
+            </div>
+            <span className="text-txt3 text-sm hidden sm:block">{t.genre}</span>
+            <span className="text-txt3 text-sm hidden sm:block w-16 text-right">
+              {(s.audio.size / 1024 / 1024).toFixed(1)} MB
+            </span>
+            <button
+              onClick={() => remove.mutate(t.id)}
+              className="text-txt3 hover:text-red"
+              aria-label="Remove download"
+              title="Remove from this device"
+            >
+              <Trash2 size={17} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+export default function Library() {
+  const [tab, setTab] = useState<"liked" | "following" | "downloads">("liked");
+  const qc = useQueryClient();
+  const { user } = useAuth();
   const { playTrack } = usePlayer();
   const { data, isLoading } = useQuery({
     queryKey: ["library"],
     queryFn: () => apiGet("/library"),
   });
+  const showDownloads =
+    !!user &&
+    (user.isAdmin ||
+      user.subscriptionPlan === "listener_pro" ||
+      user.subscriptionPlan === "artist_pro" ||
+      user.userType === "ARTIST");
 
   const unlike = useMutation({
     mutationFn: (trackId: number) => apiSend("DELETE", `/tracks/${trackId}/like`),
@@ -48,13 +130,12 @@ export default function Library() {
         <StatCard label="Total Listen Time" value={listenTime(stats.totalListenSeconds)} accent="#00FF88" />
       </div>
 
-      <div className="flex gap-2 mb-6">
-        {(
-          [
-            { id: "liked", label: "Liked Songs" },
-            { id: "following", label: "Following" },
-          ] as const
-        ).map((t) => (
+      <div className="flex gap-2 mb-6 flex-wrap">
+        {[
+          { id: "liked" as const, label: "Liked Songs" },
+          { id: "following" as const, label: "Following" },
+          ...(showDownloads ? [{ id: "downloads" as const, label: "Downloads" }] : []),
+        ].map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
@@ -100,6 +181,7 @@ export default function Library() {
                 <span className="text-txt3 text-sm hidden sm:block w-12 text-right">
                   {t.durationSeconds ? formatDuration(t.durationSeconds) : "—"}
                 </span>
+                <DownloadButton track={t} />
                 <button
                   onClick={() => unlike.mutate(t.id)}
                   className="text-red hover:opacity-70"
@@ -112,6 +194,8 @@ export default function Library() {
             ))}
           </div>
         ))}
+
+      {tab === "downloads" && showDownloads && <DownloadsTab />}
 
       {tab === "following" &&
         (following.length === 0 ? (

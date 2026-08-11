@@ -236,7 +236,13 @@ router.get("/artist/cover-art", requireArtist, async (req, res, next) => {
     res.json({
       gallery,
       openaiConfigured: isOpenAiConfigured(),
-      usage: { used, limit: coverArtGenerationsFor(req.user!.subscriptionPlan) },
+      usage: {
+        used,
+        // null = unlimited (admins have no plan and no quota).
+        limit: req.user!.isAdmin
+          ? null
+          : coverArtGenerationsFor(req.user!.subscriptionPlan),
+      },
     });
   } catch (err) {
     next(err);
@@ -254,13 +260,15 @@ router.post("/artist/cover-art", requireArtist, async (req, res, next) => {
       res.status(400).json({ error: "Describe the cover you want (3+ characters)" });
       return;
     }
-    const limit = coverArtGenerationsFor(req.user!.subscriptionPlan);
-    const used = await generationsUsed(req.user!.id);
-    if (used >= limit) {
-      res.status(403).json({
-        error: `You've used all ${limit} AI cover generations for this month. Your quota resets on the 1st.`,
-      });
-      return;
+    if (!req.user!.isAdmin) {
+      const limit = coverArtGenerationsFor(req.user!.subscriptionPlan);
+      const used = await generationsUsed(req.user!.id);
+      if (used >= limit) {
+        res.status(403).json({
+          error: `You've used all ${limit} AI cover generations for this month. Your quota resets on the 1st.`,
+        });
+        return;
+      }
     }
     const { url, generator } = await generateCoverArt(
       parsed.data.prompt,

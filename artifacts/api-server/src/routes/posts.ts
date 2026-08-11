@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Response } from "express";
 import { z } from "zod";
 import {
   db,
@@ -8,17 +8,39 @@ import {
   postLikesTable,
   reportsTable,
   tracksTable,
+  type User,
 } from "@workspace/db";
 import { and, eq, desc, inArray, sql } from "drizzle-orm";
 import { requireOnboarded } from "../middlewares/auth";
 import { miniUser } from "../lib/auth";
 import { imageUpload, uploadUrl } from "../lib/uploads";
 import { checkProfanity } from "../lib/profanity";
+import { withAudioForUser } from "../lib/audio";
 
 const router: IRouter = Router();
 
 const PROFANITY_MSG =
   "Your post contains language that isn't allowed in the community.";
+
+/** Exclusive posts are visible in full to Pro listeners, artists, and admins. */
+function seesExclusive(user: {
+  isAdmin: boolean;
+  userType: string;
+  subscriptionPlan: string | null;
+}): boolean {
+  return (
+    user.isAdmin ||
+    user.userType === "ARTIST" ||
+    user.subscriptionPlan === "listener_pro"
+  );
+}
+
+function canViewPost(
+  post: { isExclusive: boolean; authorId: number },
+  user: User,
+): boolean {
+  return !post.isExclusive || post.authorId === user.id || seesExclusive(user);
+}
 
 async function hydratePosts(postIds: number[], viewerId: number) {
   if (postIds.length === 0)
@@ -68,21 +90,34 @@ router.get("/posts", requireOnboarded, async (req, res, next) => {
           .where(inArray(tracksTable.id, trackIds))
       : [];
     const trackMap = new Map(
-      tracks.map((t) => [t.track.id, { ...t.track, artist: miniUser(t.artist) }]),
+      tracks.map((t) => [
+        t.track.id,
+        { ...withAudioForUser(t.track, req.user!), artist: miniUser(t.artist) },
+      ]),
     );
     const { comments, likes } = await hydratePosts(
       rows.map((r) => r.post.id),
       req.user!.id,
     );
     res.json({
-      posts: rows.map((r) => ({
-        ...r.post,
-        author: miniUser(r.author),
-        track: r.post.trackId ? (trackMap.get(r.post.trackId) ?? null) : null,
-        commentCount: comments.get(r.post.id) ?? 0,
-        likedByMe: likes.has(r.post.id),
-        isMine: r.post.authorId === req.user!.id,
-      })),
+      posts: rows.map((r) => {
+        const locked = !canViewPost(r.post, req.user!);
+        return {
+          ...r.post,
+          // Locked exclusive posts ship only a teaser — no content or media.
+          content: locked ? "" : r.post.content,
+          image: locked ? null : r.post.image,
+          author: miniUser(r.author),
+          track:
+            !locked && r.post.trackId
+              ? (trackMap.get(r.post.trackId) ?? null)
+              : null,
+          commentCount: comments.get(r.post.id) ?? 0,
+          likedByMe: likes.has(r.post.id),
+          isMine: r.post.authorId === req.user!.id,
+          locked,
+        };
+      }),
     });
   } catch (err) {
     next(err);
@@ -98,6 +133,10 @@ router.post(
       const schema = z.object({
         content: z.string().min(1).max(5000),
         trackId: z.coerce.number().int().optional(),
+        // Multipart form fields arrive as strings, where "false" must mean false.
+        isExclusive: z
+          .preprocess((v) => v === true || v === "true" || v === "1", z.boolean())
+          .optional(),
       });
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) {
@@ -129,6 +168,9 @@ router.post(
           content: parsed.data.content,
           image: req.file ? uploadUrl("images", req.file.filename) : null,
           trackId,
+          // Only artists can publish exclusive posts.
+          isExclusive:
+            req.user!.userType === "ARTIST" && (parsed.data.isExclusive ?? false),
         })
         .returning();
       res.status(201).json({
@@ -139,6 +181,7 @@ router.post(
           commentCount: 0,
           likedByMe: false,
           isMine: true,
+          locked: false,
         },
       });
     } catch (err) {
@@ -198,6 +241,7 @@ router.delete("/posts/:id", requireOnboarded, async (req, res, next) => {
 router.post("/posts/:id/like", requireOnboarded, async (req, res, next) => {
   try {
     const id = Number(req.params.id);
+    if (!(await assertPostViewable(id, req.user!, res))) return;
     const inserted = await db
       .insert(postLikesTable)
       .values({ postId: id, userId: req.user!.id })
@@ -236,9 +280,32 @@ router.delete("/posts/:id/like", requireOnboarded, async (req, res, next) => {
   }
 });
 
+/** 404 when the post doesn't exist, 403 when it's exclusive and locked for the viewer. */
+async function assertPostViewable(
+  id: number,
+  user: User,
+  res: Response,
+): Promise<boolean> {
+  const [post] = await db
+    .select({ isExclusive: postsTable.isExclusive, authorId: postsTable.authorId })
+    .from(postsTable)
+    .where(eq(postsTable.id, id))
+    .limit(1);
+  if (!post) {
+    res.status(404).json({ error: "Post not found" });
+    return false;
+  }
+  if (!canViewPost(post, user)) {
+    res.status(403).json({ error: "This post is exclusive to Pro subscribers" });
+    return false;
+  }
+  return true;
+}
+
 router.get("/posts/:id/comments", requireOnboarded, async (req, res, next) => {
   try {
     const id = Number(req.params.id);
+    if (!(await assertPostViewable(id, req.user!, res))) return;
     const rows = await db
       .select({ comment: commentsTable, commenter: usersTable })
       .from(commentsTable)
@@ -270,15 +337,7 @@ router.post("/posts/:id/comments", requireOnboarded, async (req, res, next) => {
       res.status(400).json({ error: PROFANITY_MSG });
       return;
     }
-    const [post] = await db
-      .select({ id: postsTable.id })
-      .from(postsTable)
-      .where(eq(postsTable.id, id))
-      .limit(1);
-    if (!post) {
-      res.status(404).json({ error: "Post not found" });
-      return;
-    }
+    if (!(await assertPostViewable(id, req.user!, res))) return;
     const [comment] = await db
       .insert(commentsTable)
       .values({ postId: id, commenterId: req.user!.id, content: parsed.data.content })

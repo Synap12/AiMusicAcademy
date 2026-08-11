@@ -43,7 +43,7 @@ export default function ArtistPublicProfile({ id }: { id: number }) {
     };
     tracks: Track[];
     merch: MerchProduct[];
-    posts: { id: number; content: string; createdAt: string }[];
+    posts: { id: number; content: string; createdAt: string; locked?: boolean }[];
     followerCount: number;
     isFollowing: boolean;
   };
@@ -188,7 +188,13 @@ export default function ArtistPublicProfile({ id }: { id: number }) {
             {posts.map((p) => (
               <div key={p.id} className="card">
                 <p className="text-txt3 text-xs mb-2">{timeAgo(p.createdAt)}</p>
-                <p className="whitespace-pre-wrap break-words">{p.content}</p>
+                {p.locked ? (
+                  <p className="text-txt3 text-sm italic">
+                    🔒 Exclusive post — upgrade to Listener Pro to unlock.
+                  </p>
+                ) : (
+                  <p className="whitespace-pre-wrap break-words">{p.content}</p>
+                )}
               </div>
             ))}
           </div>

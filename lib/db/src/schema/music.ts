@@ -22,6 +22,9 @@ export const tracksTable = pgTable(
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
     audioFile: text("audio_file").notNull(),
+    // Compressed 128kbps rendition served to non-Pro listeners; the original
+    // upload in audioFile is the HQ version. Null until transcoding completes.
+    audioFileLq: text("audio_file_lq"),
     coverArt: text("cover_art"),
     genre: text("genre").notNull().default("Electronic"),
     releaseDate: timestamp("release_date").notNull().defaultNow(),

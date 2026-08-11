@@ -11,8 +11,10 @@ import {
 import { and, eq, desc, asc, sql, inArray, count, sum, gte } from "drizzle-orm";
 import { requireOnboarded, requireArtist } from "../middlewares/auth";
 import { miniUser } from "../lib/auth";
-import { audioUpload, uploadUrl } from "../lib/uploads";
+import path from "node:path";
+import { audioUpload, uploadUrl, UPLOADS_ROOT } from "../lib/uploads";
 import { PLAY_RATE, DAILY_COUNTED_PLAYS } from "../lib/plans";
+import { scheduleLqTranscode, withAudioForUser } from "../lib/audio";
 
 const router: IRouter = Router();
 
@@ -65,7 +67,7 @@ router.get("/tracks", requireOnboarded, async (req, res, next) => {
     );
     res.json({
       tracks: rows.map((r) => ({
-        ...r.track,
+        ...withAudioForUser(r.track, req.user!),
         artist: miniUser(r.artist),
         likedByMe: liked.has(r.track.id),
       })),
@@ -149,6 +151,15 @@ router.post(
           durationSeconds: parsed.data.durationSeconds,
         })
         .returning();
+      if (track) {
+        const trackId = track.id;
+        scheduleLqTranscode(audio.filename, async (url) => {
+          await db
+            .update(tracksTable)
+            .set({ audioFileLq: url })
+            .where(eq(tracksTable.id, trackId));
+        });
+      }
       res.status(201).json({ track: { ...track, artist: miniUser(req.user!) } });
     } catch (err) {
       next(err);
@@ -271,6 +282,40 @@ router.post("/tracks/:id/play", requireOnboarded, async (req, res, next) => {
   }
 });
 
+/**
+ * Offline download (Listener Pro perk). Artists can always download their own
+ * tracks. Sends the original (HQ) file.
+ */
+router.get("/tracks/:id/download", requireOnboarded, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const [track] = await db
+      .select()
+      .from(tracksTable)
+      .where(eq(tracksTable.id, id))
+      .limit(1);
+    if (!track || (!track.isPublished && track.artistId !== req.user!.id)) {
+      res.status(404).json({ error: "Track not found" });
+      return;
+    }
+    const allowed =
+      req.user!.isAdmin ||
+      track.artistId === req.user!.id ||
+      req.user!.subscriptionPlan === "listener_pro" ||
+      req.user!.subscriptionPlan === "artist_pro";
+    if (!allowed) {
+      res.status(403).json({
+        error: "Offline downloads are a Listener Pro feature — upgrade to download music.",
+      });
+      return;
+    }
+    const relative = track.audioFile.replace(/^\/uploads\//, "");
+    res.download(path.join(UPLOADS_ROOT, relative), `${track.trackName}${path.extname(track.audioFile)}`);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post("/tracks/:id/like", requireOnboarded, async (req, res, next) => {
   try {
     const id = Number(req.params.id);
@@ -339,7 +384,7 @@ router.get("/library", requireOnboarded, async (req, res, next) => {
     ]);
     res.json({
       likedTracks: likedRows.map((r) => ({
-        ...r.track,
+        ...withAudioForUser(r.track, req.user!),
         artist: miniUser(r.artist),
         likedByMe: true,
         likedDate: r.liked.likedDate,

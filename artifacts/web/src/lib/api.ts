@@ -113,6 +113,7 @@ export interface Post {
   content: string;
   image: string | null;
   trackId: number | null;
+  isExclusive: boolean;
   likeCount: number;
   createdAt: string;
   author: MiniUser;
@@ -120,6 +121,21 @@ export interface Post {
   commentCount: number;
   likedByMe: boolean;
   isMine: boolean;
+  /** True when this exclusive post is hidden from the viewer's plan. */
+  locked?: boolean;
+}
+
+export interface SupportTicket {
+  id: number;
+  userId: number;
+  subject: string;
+  message: string;
+  isPriority: boolean;
+  status: "open" | "closed";
+  reply: string | null;
+  createdAt: string;
+  resolvedAt: string | null;
+  user?: MiniUser & { subscriptionPlan: string | null };
 }
 
 export interface Plan {

@@ -25,6 +25,9 @@ export const postsTable = pgTable(
     trackId: integer("track_id").references(() => tracksTable.id, {
       onDelete: "set null",
     }),
+    // Exclusive posts are visible in full only to Pro listeners, artists, and
+    // admins; Basic listeners get a locked teaser.
+    isExclusive: boolean("is_exclusive").notNull().default(false),
     likeCount: integer("like_count").notNull().default(0),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -88,6 +91,25 @@ export const bannedWordsTable = pgTable("banned_words", {
   word: text("word").notNull().unique(),
 });
 
+export const supportTicketsTable = pgTable(
+  "support_tickets",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    subject: text("subject").notNull(),
+    message: text("message").notNull(),
+    // Pro-plan subscribers get priority handling in the admin queue.
+    isPriority: boolean("is_priority").notNull().default(false),
+    status: text("status").notNull().default("open"), // open | closed
+    reply: text("reply"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at"),
+  },
+  (t) => [index("support_tickets_status_idx").on(t.status, t.isPriority)],
+);
+
 export const insertPostSchema = createInsertSchema(postsTable).omit({
   id: true,
   createdAt: true,
@@ -100,3 +122,4 @@ export type Comment = typeof commentsTable.$inferSelect;
 export type PostLike = typeof postLikesTable.$inferSelect;
 export type Report = typeof reportsTable.$inferSelect;
 export type BannedWord = typeof bannedWordsTable.$inferSelect;
+export type SupportTicket = typeof supportTicketsTable.$inferSelect;

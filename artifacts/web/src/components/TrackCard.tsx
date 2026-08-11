@@ -1,8 +1,11 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiSend, type Track } from "@/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiSend, ApiError, type Track } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { useToast } from "@/lib/toast";
+import { canDownload, offlineIds, removeOffline, saveOffline } from "@/lib/offline";
 import { usePlayer } from "@/lib/player";
 import { Cover } from "./ui";
-import { Play, Pause, Heart } from "lucide-react";
+import { Play, Pause, Heart, Download, CheckCircle2 } from "lucide-react";
 import { Link } from "wouter";
 import clsx from "clsx";
 
@@ -30,6 +33,59 @@ export function LikeButton({ track, size = 18 }: { track: Track; size?: number }
       aria-label={liked ? "Unlike" : "Like"}
     >
       <Heart size={size} fill={liked ? "currentColor" : "none"} />
+    </button>
+  );
+}
+
+/** Pro-only: save/remove a track for offline playback (Downloads tab in My Library). */
+export function DownloadButton({ track, size = 17 }: { track: Track; size?: number }) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const { data: downloaded } = useQuery({
+    queryKey: ["offline-ids"],
+    queryFn: offlineIds,
+    staleTime: 10_000,
+  });
+  const isSaved = downloaded?.has(track.id) ?? false;
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (isSaved) {
+        await removeOffline(track.id);
+        return "removed";
+      }
+      await saveOffline(track);
+      return "saved";
+    },
+    onSuccess: (what) => {
+      qc.invalidateQueries({ queryKey: ["offline-ids"] });
+      qc.invalidateQueries({ queryKey: ["offline-tracks"] });
+      toast(
+        what === "saved"
+          ? `"${track.trackName}" saved for offline listening`
+          : `"${track.trackName}" removed from downloads`,
+      );
+    },
+    onError: (err) =>
+      toast(err instanceof ApiError ? err.message : "Download failed", "error"),
+  });
+
+  if (!canDownload(user, track)) return null;
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!mutation.isPending) mutation.mutate();
+      }}
+      className={clsx(
+        "transition-colors",
+        isSaved ? "text-green" : "text-txt2 hover:text-cyan",
+        mutation.isPending && "animate-pulse",
+      )}
+      aria-label={isSaved ? "Remove download" : "Download for offline"}
+      title={isSaved ? "Downloaded — click to remove" : "Download for offline listening"}
+    >
+      {isSaved ? <CheckCircle2 size={size} /> : <Download size={size} />}
     </button>
   );
 }
@@ -68,7 +124,10 @@ export function TrackCard({ track, queue }: { track: Track; queue: Track[] }) {
             {track.artist.artistName}
           </Link>
         </div>
-        <LikeButton track={track} />
+        <div className="flex items-center gap-2">
+          <DownloadButton track={track} />
+          <LikeButton track={track} />
+        </div>
       </div>
       <div className="flex items-center justify-between mt-2">
         <span className="badge" style={{ background: "rgba(0,212,255,0.1)", color: "#00D4FF" }}>
