@@ -113,7 +113,7 @@ Built as a real full-stack web app (React + Express + PostgreSQL), replacing the
 ## 10. Waiting on you (later — as agreed)
 
 - [ ] `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, payment link + price env vars → real billing
-- [ ] `OPENAI_API_KEY` → real AI cover art generation
+- [x] `OPENAI_API_KEY` → real AI cover art generation (key added via `.env`, verified working with `gpt-image-1`)
 - [ ] Email provider → reset links via email instead of on-screen dev link
 
 ---
