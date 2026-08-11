@@ -52,6 +52,8 @@ Built as a real full-stack web app (React + Express + PostgreSQL), replacing the
 - [x] Play tracking → play count + artist earnings ledger ($0.004/play)
 - [x] **Play-counting rules**: only the first 10 plays per listener per day count toward play counts/earnings (silent — streaming never blocked, resets midnight UTC); a play counts only after 50% of the track is heard; artists never earn from self-plays
 - [x] Like / unlike tracks
+- [x] **HQ audio tiers**: uploads are transcoded to a 128kbps MP3 with ffmpeg; Basic listeners stream the compressed rendition, Pro listeners/artists/admins stream the original (HQ)
+- [x] **Offline downloads (Listener Pro)**: Pro-gated download endpoint, tracks stored in IndexedDB (audio + cover), Downloads tab in My Library, service worker caches the app shell so downloaded music plays fully offline
 - [x] My Library: stats (liked count, following count, listen time), Liked Songs tab, Following tab, empty states
 - [x] Follow / unfollow artists
 - [x] Public artist profile: cover, bio, social links, Play All, track list, merch grid, recent posts, follower count
@@ -69,6 +71,7 @@ Built as a real full-stack web app (React + Express + PostgreSQL), replacing the
 - [x] Feed with role-colored avatars (cyan listener / purple artist), timestamps
 - [x] Like, comment (threaded panel), edit/delete own posts & comments
 - [x] Report posts → moderation queue
+- [x] **Exclusive artist posts**: artists mark posts Exclusive; Pro listeners/artists/admins see them in full, Basic listeners get a locked upgrade teaser (comments/likes blocked server-side)
 - [x] Profanity filter: PurgoMalum API + custom Banned_Word list (verified blocking)
 - [x] Attached tracks playable from the feed
 
@@ -80,6 +83,7 @@ Built as a real full-stack web app (React + Express + PostgreSQL), replacing the
 - [x] Upload Audio: audio file, cover art, genre, release date, publish toggle, auto-duration detection
 - [x] My Releases: search, sort (newest/oldest/plays/A-Z/Z-A), edit popup, delete confirmation, publish/draft toggle, play from list
 - [x] AI Cover Art studio: prompt + 6 style presets, gallery, download, delete, assign-to-track — **works now** with a local generator; automatically upgrades to OpenAI `gpt-image-1` when an API key is added
+- [x] **AI cover art monthly limits**: 5 generations/month (Artist Basic), 20/month (Artist Pro), reset on the 1st (UTC); counted from a permanent generation log so deletes never refund quota; usage counter + disabled button + alert at limit
 - [x] Artist profile: avatar + cover image upload, bio, social links, payout method
 
 ## 8. Admin Panel
@@ -89,6 +93,7 @@ Built as a real full-stack web app (React + Express + PostgreSQL), replacing the
 - [x] Moderation Queue: pending reports with post preview, reporter + reason, Dismiss (keep post) / Delete Post (cascades report resolution)
 - [x] Payouts: total payable, pending withdrawal requests, artists with balances, Mark as Paid (resets balance + settles requests), payment history
 - [x] Banned-word management API (add/remove filter terms)
+- [x] **Priority support**: Support page (all users) with ticket form + reply history; Pro subscribers' tickets flagged priority; admin Support queue with reply-and-close / reopen
 
 ## 9. Testing (82/82 passing)
 
