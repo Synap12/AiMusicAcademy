@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import type { PlanId } from "./plans";
+import { PLANS, type PlanId } from "./plans";
 
 /**
  * Stripe integration via the raw REST API (no SDK needed).
@@ -30,7 +30,24 @@ export function paymentLinkFor(plan: PlanId, userId: number): string | null {
   const link = process.env[PAYMENT_LINK_ENV[plan]];
   if (!link) return null;
   const sep = link.includes("?") ? "&" : "?";
-  return `${link}${sep}client_reference_id=${userId}`;
+  // Encode the chosen plan alongside the user id so the (signature-verified)
+  // checkout.session.completed webhook can grant exactly the paid plan. Plan
+  // ids use underscores, so a dash separates the two halves unambiguously.
+  return `${link}${sep}client_reference_id=${userId}-${plan}`;
+}
+
+/** Parse a client_reference_id of the form "<userId>-<planId>". */
+export function parseClientReference(ref: string | undefined): {
+  userId: number | null;
+  plan: PlanId | null;
+} {
+  const value = String(ref ?? "");
+  const dash = value.indexOf("-");
+  const idPart = dash === -1 ? value : value.slice(0, dash);
+  const planPart = dash === -1 ? "" : value.slice(dash + 1);
+  const userId = Number(idPart) || null;
+  const plan = planPart in PLANS ? (planPart as PlanId) : null;
+  return { userId, plan };
 }
 
 export function planForPriceId(priceId: string): PlanId | null {

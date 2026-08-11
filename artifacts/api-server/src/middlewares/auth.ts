@@ -54,9 +54,21 @@ export function requireOnboarded(
     res.status(403).json({ error: "Your account has been banned", banned: true });
     return;
   }
-  if (!req.user.hasOnboarded && !req.user.isAdmin) {
-    res.status(403).json({ error: "Subscription required", needsSubscription: true });
-    return;
+  if (!req.user.isAdmin) {
+    if (!req.user.hasOnboarded) {
+      res.status(403).json({ error: "Subscription required", needsSubscription: true });
+      return;
+    }
+    // A subscription that is no longer paid revokes access, no matter which
+    // Stripe webhook delivered the status change (updated vs. deleted).
+    const status = req.user.subscriptionStatus;
+    if (status === "past_due" || status === "canceled") {
+      res.status(403).json({
+        error: "Your subscription is no longer active",
+        needsSubscription: true,
+      });
+      return;
+    }
   }
   next();
 }

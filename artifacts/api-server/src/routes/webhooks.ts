@@ -1,7 +1,11 @@
 import { Router, type IRouter, raw } from "express";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { verifyStripeSignature, planForPriceId } from "../lib/stripe";
+import {
+  verifyStripeSignature,
+  planForPriceId,
+  parseClientReference,
+} from "../lib/stripe";
 import { logger } from "../lib/logger";
 
 /**
@@ -17,6 +21,13 @@ router.post(
     try {
       const rawBody = req.body as Buffer;
       const secret = process.env.STRIPE_WEBHOOK_SECRET;
+      // Fail closed in production: an unsigned webhook could forge subscription
+      // state for any account, so refuse to process events without a secret.
+      if (process.env.NODE_ENV === "production" && !secret) {
+        logger.error("STRIPE_WEBHOOK_SECRET is not set; refusing webhook");
+        res.status(500).json({ error: "Webhook not configured" });
+        return;
+      }
       if (secret) {
         const ok = verifyStripeSignature(
           rawBody,
@@ -34,18 +45,22 @@ router.post(
 
       switch (type) {
         case "checkout.session.completed": {
-          const userId = Number(obj.client_reference_id);
+          const { userId, plan } = parseClientReference(obj.client_reference_id);
           if (!userId) break;
+          // Grant the plan here — at confirmed payment — so an abandoned
+          // checkout never hands out entitlements. The plan rides in the
+          // (signed) client_reference_id we set on the payment link.
           await db
             .update(usersTable)
             .set({
               subscriptionStatus: "active",
               hasOnboarded: true,
+              ...(plan ? { subscriptionPlan: plan } : {}),
               stripeCustomerId: obj.customer ?? null,
               stripeSubscriptionId: obj.subscription ?? null,
             })
             .where(eq(usersTable.id, userId));
-          logger.info({ userId }, "checkout.session.completed processed");
+          logger.info({ userId, plan }, "checkout.session.completed processed");
           break;
         }
         case "customer.subscription.updated": {

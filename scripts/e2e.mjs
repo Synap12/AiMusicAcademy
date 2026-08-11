@@ -110,6 +110,12 @@ console.log("== 3. Stripe checkout flow ==");
       r.json?.url?.includes(`client_reference_id=${proId}`),
     JSON.stringify(r.json),
   );
+  r = await pro.req("GET", "/api/auth/me");
+  check(
+    "checkout alone does NOT grant the plan (no free upgrade before payment)",
+    r.json?.user?.subscriptionPlan == null,
+    JSON.stringify(r.json?.user?.subscriptionPlan),
+  );
   r = await pro.req("POST", "/api/subscriptions/checkout", { plan: "artist_pro" });
   check("role-mismatched plan rejected", r.status === 400);
   r = await pro.req("POST", "/api/subscriptions/mock-complete", {});
@@ -136,13 +142,21 @@ console.log("== 4. Webhook security & activation ==");
   });
   check("unsigned webhook rejected 400", res.status === 400, String(res.status));
 
-  for (const [id, cus, sub] of [
-    [proId, `cus_e2e_pro_${RUN}`, `sub_e2e_pro_${RUN}`],
-    [basicId, `cus_e2e_basic_${RUN}`, `sub_e2e_basic_${RUN}`],
+  for (const [id, plan, cus, sub] of [
+    [proId, "listener_pro", `cus_e2e_pro_${RUN}`, `sub_e2e_pro_${RUN}`],
+    [basicId, "listener_basic", `cus_e2e_basic_${RUN}`, `sub_e2e_basic_${RUN}`],
   ]) {
+    // Stripe echoes back the client_reference_id we set on the payment link,
+    // which encodes the paid plan as "<userId>-<planId>".
     const { body, header } = signedWebhook({
       type: "checkout.session.completed",
-      data: { object: { client_reference_id: id, customer: cus, subscription: sub } },
+      data: {
+        object: {
+          client_reference_id: `${id}-${plan}`,
+          customer: cus,
+          subscription: sub,
+        },
+      },
     });
     res = await fetch(BASE + "/api/webhooks/stripe", {
       method: "POST",
@@ -375,6 +389,25 @@ console.log("== 11. Subscription lifecycle webhooks ==");
     JSON.stringify(r.json?.user),
   );
   check("canceled user blocked from browse", (await basic.req("GET", "/api/tracks")).status === 403);
+
+  // A past_due/canceled status delivered via subscription.updated (not deleted)
+  // must also revoke access — the pro user is active until this event.
+  {
+    const w = signedWebhook({
+      type: "customer.subscription.updated",
+      data: { object: { customer: `cus_e2e_pro_${RUN}`, status: "past_due" } },
+    });
+    const up = await fetch(BASE + "/api/webhooks/stripe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "stripe-signature": w.header },
+      body: w.body,
+    });
+    check("subscription.updated(past_due) accepted", up.status === 200);
+    check(
+      "past_due user revoked even without a delete event",
+      (await pro.req("GET", "/api/tracks")).status === 403,
+    );
+  }
 }
 
 console.log("== 12. Rate limiting ==");

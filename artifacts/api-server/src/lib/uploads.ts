@@ -26,7 +26,9 @@ for (const sub of ["audio", "images"]) {
 }
 
 const AUDIO_EXT = new Set([".mp3", ".wav", ".m4a", ".ogg", ".flac"]);
-const IMAGE_EXT = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"]);
+// SVG is intentionally excluded: it can carry inline <script>, and uploads are
+// served from the app's own origin, which would make it a stored-XSS vector.
+const IMAGE_EXT = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
 
 function storageFor(subFor: (file: Express.Multer.File) => "audio" | "images") {
   return multer.diskStorage({

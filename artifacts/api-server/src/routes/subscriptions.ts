@@ -40,17 +40,20 @@ router.post("/subscriptions/checkout", requireAuth, async (req, res, next) => {
       res.status(400).json({ error: `That plan is for ${plan.role.toLowerCase()}s` });
       return;
     }
-    // Remember the chosen plan; the webhook (or mock completion) activates it.
+    const link = paymentLinkFor(plan.id as PlanId, req.user!.id);
+    if (isStripeConfigured() && link) {
+      // Real payment path: do NOT grant the plan here. Stripe's
+      // customer.subscription.updated webhook sets subscriptionPlan from the
+      // paid price id, so an abandoned checkout can't hand out entitlements.
+      res.json({ mock: false, url: link });
+      return;
+    }
+    // Mock path (Stripe not connected): subscriptions are free-by-design, so
+    // remember the chosen plan for /subscriptions/mock-complete to activate.
     await db
       .update(usersTable)
       .set({ subscriptionPlan: plan.id })
       .where(eq(usersTable.id, req.user!.id));
-
-    const link = paymentLinkFor(plan.id as PlanId, req.user!.id);
-    if (isStripeConfigured() && link) {
-      res.json({ mock: false, url: link });
-      return;
-    }
     res.json({ mock: true });
   } catch (err) {
     next(err);
